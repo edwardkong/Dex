@@ -26,6 +26,8 @@ class UCI:
                         ng.makemove(int_move)
 
             elif parsed_command[0] == "go":
+                if ng.move == 1: depth = 2
+                else: depth = 4
                 if parsed_command[1] == "movetime":
                     eval, best_move = ng.startSearchTimedMM(parsed_command[2], depth, eval_func)
                     print(f"bestmove {makemove.int_to_uci(best_move)}")
@@ -53,5 +55,5 @@ class UCI:
 
 if __name__ == "__main__":
     eval_func = evaluate.evaluate_board
-    depth = 3
+    depth = 4
     UCI.coms()

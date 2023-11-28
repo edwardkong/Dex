@@ -40,11 +40,11 @@ def minimax_alpha_beta(bitboards, depth, alpha, beta, color, evaluate_func):
 
     legal_moves = movegen.generate_moves(bitboards, color)
 
-    #for m in legal_moves: 
-    # print(makemove.int_to_uci(m))
+
+    #for m in legal_moves: print(makemove.int_to_uci(m))
     #print(legal_moves)
     #quit()
-    
+
     if not legal_moves:
         if color == 1:
             return float('-inf'), None
@@ -60,9 +60,6 @@ def minimax_alpha_beta(bitboards, depth, alpha, beta, color, evaluate_func):
         max_eval = float('-inf')
         best_move = None
         for move in legal_moves:
-            #child_position = position.sim_and_eval(bitboards, move, 0)
-            #if child_position:
-            #return max_eval - 100000, None
             child_position = position.simulate_move(bitboards, move)
             eval_score, _ = minimax_alpha_beta(child_position, depth - 1, alpha, beta, 1, evaluate_func)
             #print(f"depth {depth} inside max")
@@ -79,9 +76,6 @@ def minimax_alpha_beta(bitboards, depth, alpha, beta, color, evaluate_func):
         min_eval = float('inf')
         best_move = None
         for move in legal_moves:
-            #child_position = position.sim_and_eval(bitboards, move, 1)
-            #if child_position:
-            #return min_eval + 100000, None
             child_position = position.simulate_move(bitboards, move)
             eval_score, _ = minimax_alpha_beta(child_position, depth - 1, alpha, beta, 0, evaluate_func)
             #print(f"depth {depth} inside min")

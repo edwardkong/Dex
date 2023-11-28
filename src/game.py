@@ -63,6 +63,7 @@ class GameState:
         if moves:
             for move in moves:
                 self.board.bitboards = position.update_board(self.board.bitboards, move)
+                self.board.bitboards = position.refresh_occupant_bitboards(self.board.bitboards)
                 self.turn = 1 - self.turn
                 self.move += 1
                 self.move_history.append(move)
@@ -131,8 +132,8 @@ class GameState:
         #for i in m:
             #self.makemove(makemove.uci_to_int(i, self.board.bitboards))
 
-        i = 2
-        while i:
+        i = 6
+        while True:
             i-=1
             print ("----------------------------------")
             text_board = self.board.print_board()
@@ -170,6 +171,7 @@ class GameState:
                 selection = best_move
 
             self.board.bitboards = position.update_board(self.board.bitboards, selection)
+            self.board.bitboards = position.refresh_occupant_bitboards(self.board.bitboards)
             self.turn = 1 - self.turn
             self.move += 1
             self.move_history.append(selection)

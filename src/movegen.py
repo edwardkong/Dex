@@ -10,7 +10,6 @@ def generate_moves(board, color):
         bitboards = board.bitboards
         castling_rights = board.castling_rights
     
-
     # Iterate through all pieces of the given color
     for piece_type in range(6):
         pieces = bitboards[piece_type + color*6]
@@ -27,40 +26,6 @@ def generate_moves(board, color):
             # Clear the LSB to move to the next piece
             pieces &= pieces - 1
     
-    return moves
-
-def generate_all_moves(bitboards, piece_type, from_square, color, castling_rights, last_move = None):
-    moves = []
-
-    if piece_type == 0:  # Pawn
-        for candidate in generate_pawn_moves(bitboards, from_square, color, last_move):
-            if type(candidate) == str:
-                promo_piece = tools.char_to_int_piece(candidate[-1])
-                move = from_square | (int(candidate[:-1]) << 6) | (promo_piece << 12) | (color << 15)
-            else:
-                move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-            moves.append(move)
-    elif piece_type == 1:  # Knight
-        for candidate in generate_knight_moves(bitboards, from_square, color):
-            move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-            moves.append(move)
-                    
-    elif piece_type == 2:  # Bishop
-        for candidate in generate_bishop_moves(bitboards, from_square, color):
-            move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-            moves.append(move)
-    elif piece_type == 3:  # Rook
-        for candidate in generate_rook_moves(bitboards, from_square, color):
-            move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-            moves.append(move)
-    elif piece_type == 4:  # Queen
-        for candidate in generate_queen_moves(bitboards, from_square, color):
-            move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-            moves.append(move)
-    elif piece_type == 5: # King
-        for candidate in generate_king_moves(bitboards, from_square, color, castling_rights):
-            move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-            moves.append(move)
     return moves
 
 

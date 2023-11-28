@@ -182,69 +182,6 @@ def simulate_move(bitboards, move):
 
     return refresh_occupant_bitboards(update_board(temp_board, move))
 
-
-# every move, update castling rights
-# scenarios which permanently disable castling:
-# King has moved = cannot castle to either side
-# Rook has moved = cannot castle to that side
-# Rook has been captured, cannot castle to that side
-#
-# Scenarios which temporarily disable castling:
-# King is in check
-# Castle through square is in check
-#
-#
-
-
-
-def get_scope(bitboards, piece_type, square, color):
-    scope = []
-    rank, file = divmod(square, 8)
-
-    if piece_type == 0:
-        if 0 <= file < 7:
-            attacked = (square - 7) if color else (square + 9)
-            if 0 <= attacked < 64:
-                scope.append(attacked)
-        if 1 <= file < 8:
-            attacked = (square - 9) if color else (square + 7)
-            if 0 <= attacked < 64:
-                scope.append(attacked)
-
-    elif piece_type == 1:
-        for i in ([2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]):
-            attacked = square + i[0] + i[1]*8
-            if 0 <= attacked < 64:
-                scope.append(attacked)
-
-    elif piece_type == 2:
-        for i in ([1, 1], [1, -1], [-1, 1], [-1, -1]):
-            curr_rank = rank + i[0]
-            curr_file = file + i[1]
-            while 0 <= curr_rank < 8 and 0 <= curr_file < 8:
-                attacked = curr_rank*8 + file
-                if not is_square_occupied(bitboards, attacked):
-                    if 0 <= attacked < 64:
-                        scope.append(attacked)
-                else:
-                    break
-                curr_rank += i[0]
-                curr_file += i[1]
-
-    ### FINISH ?
-    #if piece_type == 3:
-    #elif piece_type == 4:
-    #elif piece_type == 5:
-
-def gen_attacked_squares(bitboards, color):
-    attacked_squares = 0
-    get_scope()
-
-def update_attacked_squares(attacked_squares, move):
-    # Accepts a bitboard of attacked squares (for a certain color) and updates it when a move is made.
-
-    return
-
 # Checks if any opponent pieces has line of sight with the color king
 def in_los(bitboards, color):
     king_square = tools.bitscan_lsb(bitboards[5 + color*6])
@@ -402,31 +339,34 @@ def can_castle(bitboards, color) -> bool:
     if color == 0:
         if bitboards[15] & (1 << 3):
             # We only check if the castle through square is in check, because the resulting position will be illegal if the destination square is in check
-            if is_square_attacked(bitboards, 5, color):
-                kingside = False
-            else:
-                kingside = True
+            if not bitboards[14] & (0b11 << 5):
+                if is_square_attacked(bitboards, 5, color):
+                    kingside = False
+                else:
+                    kingside = True
         
         if bitboards[15] & (1 << 2):
-            if is_square_attacked(bitboards, 3, color):
-                queenside = False
-            else:
-                queenside = True
+            if not bitboards[14] & (0b111 << 1):
+                if is_square_attacked(bitboards, 3, color):
+                    queenside = False
+                else:
+                    queenside = True
     elif color == 1:
         if bitboards[15] & (1 << 1):
-            if is_square_attacked(bitboards, 61, color):
-                kingside = False
-            else:
-                kingside = True
+            if not bitboards[14] & (0b11 << 61):
+                if is_square_attacked(bitboards, 61, color):
+                    kingside = False
+                else:
+                    kingside = True
         
-        if bitboards[15] & (1 << 1):
-            if is_square_attacked(bitboards, 59, color):
-                queenside = False
-            else:
-                queenside = True
+        if bitboards[15] & (1 << 0):
+            if not bitboards[14] & (0b111 << 57):
+                if is_square_attacked(bitboards, 59, color):
+                    queenside = False
+                else:
+                    queenside = True
     
     return kingside, queenside
-
 
 def is_in_queen_scope(bitboards, attacker_square, target_square) -> bool:
     return is_in_bishop_scope(bitboards, attacker_square, target_square) or is_in_rook_scope(bitboards, attacker_square, target_square)
@@ -448,6 +388,55 @@ def is_legal_position(bitboards, color):
     if is_in_check(bitboards, 1 - color):
         return False
     return True
+
+
+def get_scope(bitboards, piece_type, square, color):
+    scope = []
+    rank, file = divmod(square, 8)
+
+    if piece_type == 0:
+        if 0 <= file < 7:
+            attacked = (square - 7) if color else (square + 9)
+            if 0 <= attacked < 64:
+                scope.append(attacked)
+        if 1 <= file < 8:
+            attacked = (square - 9) if color else (square + 7)
+            if 0 <= attacked < 64:
+                scope.append(attacked)
+
+    elif piece_type == 1:
+        for i in ([2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]):
+            attacked = square + i[0] + i[1]*8
+            if 0 <= attacked < 64:
+                scope.append(attacked)
+
+    elif piece_type == 2:
+        for i in ([1, 1], [1, -1], [-1, 1], [-1, -1]):
+            curr_rank = rank + i[0]
+            curr_file = file + i[1]
+            while 0 <= curr_rank < 8 and 0 <= curr_file < 8:
+                attacked = curr_rank*8 + file
+                if not is_square_occupied(bitboards, attacked):
+                    if 0 <= attacked < 64:
+                        scope.append(attacked)
+                else:
+                    break
+                curr_rank += i[0]
+                curr_file += i[1]
+
+    ### FINISH ?
+    #if piece_type == 3:
+    #elif piece_type == 4:
+    #elif piece_type == 5:
+
+def gen_attacked_squares(bitboards, color):
+    attacked_squares = 0
+    get_scope()
+
+def update_attacked_squares(attacked_squares, move):
+    # Accepts a bitboard of attacked squares (for a certain color) and updates it when a move is made.
+
+    return
 
 if __name__ == "__main__":
     # Initialize bitboards for the starting position
