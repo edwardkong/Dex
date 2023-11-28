@@ -1,5 +1,11 @@
 # Dex
 Chess engine
+0.0.2
+- Castling implemented
+- Castling rights stored as bitboard
+- Some optimizations
+- Code cleanup
+
 
 0.0.1
 
