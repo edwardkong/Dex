@@ -132,7 +132,7 @@ class GameState:
             #self.makemove(makemove.uci_to_int(i, self.board.bitboards))
 
         i = 2
-        while True:#i:
+        while i:
             i-=1
             print ("----------------------------------")
             text_board = self.board.print_board()
@@ -185,7 +185,7 @@ class GameState:
 
 if __name__ == "__main__":
     ng = game.GameState()
-    ng.manualNewGame()
+    #ng.manualNewGame()
     cProfile.run('ng.manualNewGame()')
     print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     

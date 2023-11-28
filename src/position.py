@@ -138,19 +138,34 @@ def update_board(bitboards, move) -> list:
             bitboards[piece_type + color*6] |= 1 << to_square
         
             return bitboards
-## Verify castle logic
-    if piece_type == 4:
-        if from_square == 7:
-            bitboards[15] &= (0b0111)
-        elif from_square == 0:
-            bitboards[15] &= (0b1011)
-        elif from_square == 63:
-            bitboards[15] &= (0b1101)
-        elif from_square == 56:
-            bitboards[15] &= (0b1110)
 
+    # Has rook moved?
+    elif piece_type == 4:
+        if from_square == 7:
+            bitboards[15] &= ~(1 << 3)
+        elif from_square == 0:
+            bitboards[15] &= ~(1 << 2)  
+        elif from_square == 63:
+            bitboards[15] &= ~(1 << 1)   
+        elif from_square == 56:
+            bitboards[15] &= ~(1)
+
+    # Has rook been captured?
+    if bitboards[15] & (1 << 3):
+        if not bitboards[3] & (1 << 7):
+            bitboards[15] &= ~(1 << 3)
+    if bitboards[15] & (1 << 2):
+        if not bitboards[3] & (1 << 0):
+            bitboards[15] &= ~(1 << 2)    
+    if bitboards[15] & (1 << 1):
+        if not bitboards[9] & (1 << 63):
+            bitboards[15] &= ~(1 << 1)    
+    if bitboards[15] & (1):
+        if not bitboards[9] & (1 << 56):
+            bitboards[15] &= ~(1)
+
+    # Check if it's a capture
     if piece_type in (1, 2, 3, 4, 5):
-        # Check if it's a capture
         if bitboards[12 + (1 - color)] & (1 << to_square):
             for captured_piece in range(6):
                 if (bitboards[captured_piece + (1 - color)*6] & (1 << to_square)):
@@ -167,23 +182,19 @@ def simulate_move(bitboards, move):
 
     return refresh_occupant_bitboards(update_board(temp_board, move))
 
-def sim_and_eval(bitboards, move, color):
-    temp_board = bitboards.copy()
-    legal = is_legal_position(update_board(temp_board, move), color)
-    if legal:
-        return refresh_occupant_bitboards(temp_board)
-    else:
-        return None
 
-def can_castle(bitboards, move):
-    if bitboards[3] & (1 << 7) and move == 20868:
-        bitboards[15] &= (0b1100)
-    elif bitboards[15] & (1 << 2) and move == 20612:
-        bitboards[15] &= (0b1100)
-    elif bitboards[15] & (1 << 1) and move == 57276:
-        bitboards[15] &= (0b11)
-    elif bitboards[15] & (1) and move == 57020:
-        bitboards[15] &= (0b11)
+# every move, update castling rights
+# scenarios which permanently disable castling:
+# King has moved = cannot castle to either side
+# Rook has moved = cannot castle to that side
+# Rook has been captured, cannot castle to that side
+#
+# Scenarios which temporarily disable castling:
+# King is in check
+# Castle through square is in check
+#
+#
+
 
 
 def get_scope(bitboards, piece_type, square, color):
@@ -382,6 +393,40 @@ def is_in_rook_scope(bitboards, attacker_square, target_square) -> bool:
             current_rank += rank_increment
 
     return True
+
+def can_castle(bitboards, color) -> bool:
+    kingside, queenside = False, False
+    # King cannot castle while in check
+    if is_in_check(bitboards, color):
+        return False, False
+    if color == 0:
+        if bitboards[15] & (1 << 3):
+            # We only check if the castle through square is in check, because the resulting position will be illegal if the destination square is in check
+            if is_square_attacked(bitboards, 5, color):
+                kingside = False
+            else:
+                kingside = True
+        
+        if bitboards[15] & (1 << 2):
+            if is_square_attacked(bitboards, 3, color):
+                queenside = False
+            else:
+                queenside = True
+    elif color == 1:
+        if bitboards[15] & (1 << 1):
+            if is_square_attacked(bitboards, 61, color):
+                kingside = False
+            else:
+                kingside = True
+        
+        if bitboards[15] & (1 << 1):
+            if is_square_attacked(bitboards, 59, color):
+                queenside = False
+            else:
+                queenside = True
+    
+    return kingside, queenside
+
 
 def is_in_queen_scope(bitboards, attacker_square, target_square) -> bool:
     return is_in_bishop_scope(bitboards, attacker_square, target_square) or is_in_rook_scope(bitboards, attacker_square, target_square)

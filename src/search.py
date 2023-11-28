@@ -39,10 +39,12 @@ def minimax(bitboards, depth, color, evaluate_func):
 def minimax_alpha_beta(bitboards, depth, alpha, beta, color, evaluate_func):
 
     legal_moves = movegen.generate_moves(bitboards, color)
-    #for m in legal_moves:
-    #    print(makemove.int_to_uci(m))
+
+    #for m in legal_moves: 
+    # print(makemove.int_to_uci(m))
     #print(legal_moves)
     #quit()
+    
     if not legal_moves:
         if color == 1:
             return float('-inf'), None

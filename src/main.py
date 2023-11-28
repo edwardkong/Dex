@@ -53,5 +53,5 @@ class UCI:
 
 if __name__ == "__main__":
     eval_func = evaluate.evaluate_board
-    depth = 4
+    depth = 3
     UCI.coms()

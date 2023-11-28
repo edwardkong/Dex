@@ -315,18 +315,17 @@ def generate_king_moves(bitboards, from_square, color, castling_rights: dict = N
             if not (bitboards[12 + color] & (1 << new_square)):
                 candidate.append(new_square)
 
-    # Castling
-    # ! FIX
-    if 0:
+    if bitboards[15]:
+        kingside, queenside = position.can_castle(bitboards, color)
         if color == 0:
-            if castling_rights.get('WK'):
+            if kingside:
                 candidate.append(6)
-            if castling_rights.get('WQ'):
+            if queenside:
                 candidate.append(2)
-        else:
-            if castling_rights.get('BK'):
+        elif color == 1:
+            if kingside:
                 candidate.append(62)
-            if castling_rights.get('BQ'):
+            if queenside:
                 candidate.append(58)
 
     return candidate
