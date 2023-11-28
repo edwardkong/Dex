@@ -1,4 +1,4 @@
-import position, tools
+import position, tools, evaluate
 import copy
 
 # Constants for piece types
@@ -14,43 +14,42 @@ WHITE = 0
 BLACK = 1
 
 def initialize_bitboard():
-    # Initialize an empty bitboard for each piece type and color
-    bitboards = {
-        PAWN: {WHITE: 0, BLACK: 0},
-        KNIGHT: {WHITE: 0, BLACK: 0},
-        BISHOP: {WHITE: 0, BLACK: 0},
-        ROOK: {WHITE: 0, BLACK: 0},
-        QUEEN: {WHITE: 0, BLACK: 0},
-        KING: {WHITE: 0, BLACK: 0}
-    }
+    bitboards = [0] * 12
 
-    # Set the bits for each piece in the starting position
-    # ! HACKED - FIX
-    starting_position = (
-        "RNBQKBNR"
-        "PPPPPPPP"
-        "        "
-        "        "
-        "        "
-        "        "
-        "pppppppp"
-        "rnbqkbnr"
-    )
+    starting_position = [
+        0xFF00, # WP 0
+        0x42, # WN 1 
+        0x24, # WB 2
+        0x81, # WR 3
+        0x8, # WQ 4
+        0x10, # WK 5
+        0xFF000000000000, #BP 6 
+        0x4200000000000000, #BN 7 
+        0x2400000000000000, #BB 8
+        0x8100000000000000, #BR 9
+        0x800000000000000, #BQ 10
+        0x1000000000000000, #BK 11
+        0, # W occupants 12
+        0, # B occupants 13
+        0, # All occupants 14
+        0 # Castling rules (wk, wq, bk, bq)
+    ]
 
-    for square, piece in enumerate(starting_position):
-        if piece == ' ':
-            continue
+    starting_position[12] = tools.combine_bitboard(starting_position, 0)
+    starting_position[13] = tools.combine_bitboard(starting_position, 1)
+    starting_position[14] = tools.combine_bitboard(starting_position)
+    starting_position[15] = 0b1111
 
-        piece_type = "PNBRQK".index(piece.upper())
-        color = 0 if piece.isupper() else 1
+    return starting_position
 
-        bitboards[piece_type][color] |= 1 << square
-
+def refresh_occupant_bitboards(bitboards):
+    bitboards[12] = tools.combine_bitboard(bitboards, 0)
+    bitboards[13] = tools.combine_bitboard(bitboards, 1)
+    bitboards[14] = tools.combine_bitboard(bitboards)
     return bitboards
 
 # Accepts bitboards positions and a 32bit move, returns updated bitboards
-def update_board(BB, move) -> dict:
-    bitboards = copy.deepcopy(BB)
+def update_board(bitboards, move) -> list:
     # Extract information from the move
     from_square = move & 0x3F  # Source square
     to_square = (move >> 6) & 0x3F  # Destination square
@@ -58,17 +57,17 @@ def update_board(BB, move) -> dict:
     color = (move >> 15) & 0x1  # Color (0 for white, 1 for black)
 
      # Check if it's a pawn and moving to last rank
-    is_promotion = (bitboards[0][color] & (1 << from_square)) and (to_square // 8 == 0 or to_square // 8 == 7)
+    is_promotion = (bitboards[0 + color*6] & (1 << from_square)) and (to_square // 8 == 0 or to_square // 8 == 7)
 
     # ! Add capture promotion
     if is_promotion:
         if abs(from_square - to_square) in (7, 9):
             for captured_piece in range(6):
-                if (bitboards[captured_piece][1 - color] & (1 << to_square)):
-                    bitboards[captured_piece][1 - color] &= ~(1 << to_square) # Clear captured piece on promotion square
+                if (bitboards[captured_piece + (1 - color)*6] & (1 << to_square)):
+                    bitboards[captured_piece + (1 - color)*6] &= ~(1 << to_square) # Clear captured piece on promotion square
                     break
-        bitboards[0][color] &= ~(1 << from_square) # Clear pawn from source square
-        bitboards[piece_type][color] |= 1 << to_square
+        bitboards[0 + color*6] &= ~(1 << from_square) # Clear pawn from source square
+        bitboards[piece_type + color*6] |= 1 << to_square
         return bitboards
 
     # Pawn moves, non-promotion
@@ -79,97 +78,234 @@ def update_board(BB, move) -> dict:
             en_passant = True
             # If diagonal pawn move, but no piece on the destination square, it is en passant
             for captured_piece in range(6):
-                if (bitboards[captured_piece][1 - color] & (1 << to_square)):
+                if (bitboards[captured_piece + (1 - color)*6] & (1 << to_square)):
                     en_passant = False
                     break
             if en_passant:
                 en_passant_square = to_square + 8 if from_square > to_square else to_square - 8
-                bitboards[0][1-color] &= ~(1 << en_passant_square) # Clear pawn captured by en passant
-                bitboards[0][color] &= ~(1 << from_square) # Clear capturing piece from source square
+                bitboards[0 + (1 - color)*6] &= ~(1 << en_passant_square) # Clear pawn captured by en passant
+                bitboards[0 + color*6] &= ~(1 << from_square) # Clear capturing piece from source square
             else:
-                bitboards[0][color] &= ~(1 << from_square)
-                bitboards[captured_piece][1 - color] &= ~(1 << to_square) # Clear destination square (piece captured)
+                bitboards[0 + color*6] &= ~(1 << from_square)
+                bitboards[captured_piece + (1 - color)*6] &= ~(1 << to_square) # Clear destination square (piece captured)
             
         # Normal move
         else:
-            bitboards[0][color] &= ~(1 << from_square) # Clear pawn from source square
+            bitboards[0 + color*6] &= ~(1 << from_square) # Clear pawn from source square
 
         # Set the destination square in the bitboard
-        bitboards[piece_type][color] |= 1 << to_square
-        return bitboards
-
-    elif piece_type in (1, 2, 3, 4, 5):
-        # Check if it's a capture
-        for captured_piece in range(6):
-            if (bitboards[captured_piece][1 - color] & (1 << to_square)):
-                bitboards[captured_piece][1 - color] &= ~(1 << to_square) # Clear captured piece on destination square
-                break
-        bitboards[piece_type][color] &= ~(1 << from_square) # Clear piece from source square
-        bitboards[piece_type][color] |= 1 << to_square
+        bitboards[piece_type + color*6] |= 1 << to_square
         return bitboards
 
     # Castling
     elif piece_type == 5:  # King
         # Check for castling
+        if color == 0: bitboards[15] &= (0b1100)
+        else: bitboards[15] &= (0b11)
+        
         if abs(from_square - to_square) == 2:
             if color == 0:  # White
                 if to_square == 6:
                     # White king-side castling
                     rook_from_square = 7
                     rook_to_square = 5
-                    bitboards[3][color] &= ~(1 << rook_from_square)  # Clear the rook from the source square
-                    bitboards[3][color] |= 1 << rook_to_square  # Set the rook on the destination square
+                    bitboards[3 + color*6] &= ~(1 << rook_from_square)  # Clear the rook from the source square
+                    bitboards[3 + color*6] |= 1 << rook_to_square  # Set the rook on the destination square
                 elif to_square == 2:
                     # White queen-side castling
                     rook_from_square = 0
                     rook_to_square = 3
-                    bitboards[3][color] &= ~(1 << rook_from_square)  # Clear the rook from the source square
-                    bitboards[3][color] |= 1 << rook_to_square  # Set the rook on the destination square
+                    bitboards[3 + color*6] &= ~(1 << rook_from_square)  # Clear the rook from the source square
+                    bitboards[3 + color*6] |= 1 << rook_to_square  # Set the rook on the destination square
+                bitboards[15] &= (0b11)
             else:  # Black
                 if to_square == 58:
                     # Black queen-side castling
                     rook_from_square = 56
                     rook_to_square = 59
-                    bitboards[3][color] &= ~(1 << rook_from_square)  # Clear the rook from the source square
-                    bitboards[3][color] |= 1 << rook_to_square  # Set the rook on the destination square
+                    bitboards[3 + color*6] &= ~(1 << rook_from_square)  # Clear the rook from the source square
+                    bitboards[3 + color*6] |= 1 << rook_to_square  # Set the rook on the destination square
                 elif to_square == 62:
                     # Black king-side castling
                     rook_from_square = 63
                     rook_to_square = 61
-                    bitboards[3][color] &= ~(1 << rook_from_square)  # Clear the rook from the source square
-                    bitboards[3][color] |= 1 << rook_to_square  # Set the rook on the destination square
-        else: 
-            bitboards[piece_type][color] &= ~(1 << from_square) # Clear piece from source square
+                    bitboards[3 + color*6] &= ~(1 << rook_from_square)  # Clear the rook from the source square
+                    bitboards[3 + color*6] |= 1 << rook_to_square  # Set the rook on the destination square   
+                bitboards[15] &= (0b1100)         
 
-        # Set the destination square in the bitboard
-        bitboards[piece_type][color] |= 1 << to_square
+            bitboards[piece_type + color*6] &= ~(1 << from_square) # Clear piece from source square
+            # Set the destination square in the bitboard
+            bitboards[piece_type + color*6] |= 1 << to_square
+        
+            return bitboards
+## Verify castle logic
+    if piece_type == 4:
+        if from_square == 7:
+            bitboards[15] &= (0b0111)
+        elif from_square == 0:
+            bitboards[15] &= (0b1011)
+        elif from_square == 63:
+            bitboards[15] &= (0b1101)
+        elif from_square == 56:
+            bitboards[15] &= (0b1110)
+
+    if piece_type in (1, 2, 3, 4, 5):
+        # Check if it's a capture
+        if bitboards[12 + (1 - color)] & (1 << to_square):
+            for captured_piece in range(6):
+                if (bitboards[captured_piece + (1 - color)*6] & (1 << to_square)):
+                    bitboards[captured_piece + (1 - color)*6] &= ~(1 << to_square) # Clear captured piece on destination square
+                    break
+        bitboards[piece_type + color*6] &= ~(1 << from_square) # Clear piece from source square
+        bitboards[piece_type + color*6] |= 1 << to_square
         return bitboards
-
+    
     return bitboards
 
-# Returns color if occupied or -1 if unoccupied
-def is_square_occupied(bitboards, square) -> int:
-    for piece in range(12):
-        color = piece & 1
-        piece_type = piece >> 1
-        if bitboards[piece_type][color] & (1 << square):
-            return color
-    return -1
+def simulate_move(bitboards, move):
+    temp_board = bitboards.copy()
 
-def is_square_occupied_friendly(bitboards, square, color) -> bool:
-    for piece_type in range(6):
-        if bitboards[piece_type][color] & (1 << square):
+    return refresh_occupant_bitboards(update_board(temp_board, move))
+
+def sim_and_eval(bitboards, move, color):
+    temp_board = bitboards.copy()
+    legal = is_legal_position(update_board(temp_board, move), color)
+    if legal:
+        return refresh_occupant_bitboards(temp_board)
+    else:
+        return None
+
+def can_castle(bitboards, move):
+    if bitboards[3] & (1 << 7) and move == 20868:
+        bitboards[15] &= (0b1100)
+    elif bitboards[15] & (1 << 2) and move == 20612:
+        bitboards[15] &= (0b1100)
+    elif bitboards[15] & (1 << 1) and move == 57276:
+        bitboards[15] &= (0b11)
+    elif bitboards[15] & (1) and move == 57020:
+        bitboards[15] &= (0b11)
+
+
+def get_scope(bitboards, piece_type, square, color):
+    scope = []
+    rank, file = divmod(square, 8)
+
+    if piece_type == 0:
+        if 0 <= file < 7:
+            attacked = (square - 7) if color else (square + 9)
+            if 0 <= attacked < 64:
+                scope.append(attacked)
+        if 1 <= file < 8:
+            attacked = (square - 9) if color else (square + 7)
+            if 0 <= attacked < 64:
+                scope.append(attacked)
+
+    elif piece_type == 1:
+        for i in ([2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]):
+            attacked = square + i[0] + i[1]*8
+            if 0 <= attacked < 64:
+                scope.append(attacked)
+
+    elif piece_type == 2:
+        for i in ([1, 1], [1, -1], [-1, 1], [-1, -1]):
+            curr_rank = rank + i[0]
+            curr_file = file + i[1]
+            while 0 <= curr_rank < 8 and 0 <= curr_file < 8:
+                attacked = curr_rank*8 + file
+                if not is_square_occupied(bitboards, attacked):
+                    if 0 <= attacked < 64:
+                        scope.append(attacked)
+                else:
+                    break
+                curr_rank += i[0]
+                curr_file += i[1]
+
+    ### FINISH ?
+    #if piece_type == 3:
+    #elif piece_type == 4:
+    #elif piece_type == 5:
+
+def gen_attacked_squares(bitboards, color):
+    attacked_squares = 0
+    get_scope()
+
+def update_attacked_squares(attacked_squares, move):
+    # Accepts a bitboard of attacked squares (for a certain color) and updates it when a move is made.
+
+    return
+
+# Checks if any opponent pieces has line of sight with the color king
+def in_los(bitboards, color):
+    king_square = tools.bitscan_lsb(bitboards[5 + color*6])
+    king_rank, king_file = divmod(king_square, 8)
+
+    # Bishop
+    bishops = bitboards[2 + (1- color)*6]
+    while bishops:
+        from_square = tools.bitscan_lsb(bishops)
+        attacker_rank, attacker_file = divmod(from_square, 8)
+
+        if abs(attacker_rank - king_rank) == abs(attacker_file - king_file):
+            return True
+        bishops &= bishops - 1
+
+    # Rook
+    rooks = bitboards[3 + (1 - color)*6]
+    while rooks:
+        from_square = tools.bitscan_lsb(rooks)
+        attacker_rank, attacker_file = divmod(from_square, 8)
+
+        if attacker_rank == king_rank or attacker_file == king_file:
+            return True
+        rooks &= rooks - 1
+    # Queen
+    queens = bitboards[4 + (1 - color)*6]
+    while queens:
+        from_square = tools.bitscan_lsb(queens)
+        attacker_rank, attacker_file = divmod(from_square, 8)
+
+        if attacker_rank == king_rank or attacker_file == king_file:
+            return True
+        elif abs(attacker_rank - king_rank) == abs(attacker_file - king_file):
+            return True
+        queens &= queens - 1
+    return False
+
+
+# Returns bool
+def is_square_occupied_orig(bitboards, square) -> bool:
+    
+    for piece in range(12):
+        if (1 << square) > bitboards[piece]:
+            continue
+        elif bitboards[piece] & (1 << square):
             return True
     return False
+    
+def is_square_occupied(bitboards, square): #optimized with occupant bitboards
+    return bitboards[14] & (1 << square)
+    
+
+def is_square_occupied_friendly(bitboards, square, color) -> bool:
+    return bitboards[12 + color] & (1 << square)
 
 # If color = white, checks if attacked by black
 def is_square_attacked(bitboards, square, color):
     for piece_type in range(6):
-        pieces = bitboards[piece_type][1 - color]
+        pieces = bitboards[piece_type + (1 - color)*6]
         while pieces:
             from_square = tools.bitscan_lsb(pieces)
-            if piece_type == 0 and is_in_pawn_scope(from_square, square, 1 - color):
-                return True
+            if piece_type == 0:
+                if color == 0:
+                    if square + 10 <= tools.bitscan_lsb(pieces):
+                        pieces = 0
+                        continue
+                elif color == 1:
+                    if square - 10 >= tools.bitscan_msb(pieces):
+                        pieces = 0
+                        continue
+                if is_in_pawn_scope(from_square, square, 1 - color):
+                    return True
             elif piece_type == 1 and is_in_knight_scope(from_square, square):
                 return True
             elif piece_type == 2 and is_in_bishop_scope(bitboards, from_square, square):
@@ -184,6 +320,7 @@ def is_square_attacked(bitboards, square, color):
     return False
 
 def is_in_pawn_scope(attacker_square, target_square, color) -> bool:
+
     attacker_rank, attacker_file = divmod(attacker_square, 8)
     target_rank, target_file = divmod(target_square, 8)
 
@@ -207,8 +344,10 @@ def is_in_bishop_scope(bitboards, attacker_square, target_square) -> bool:
 
     current_rank, current_file = attacker_rank + rank_increment, attacker_file + file_increment
     while current_rank != target_rank:
+        if current_rank >= 8 or current_rank < 0 or current_file >= 8 or current_file < 0:
+            return False
         current_square = 8 * current_rank + current_file
-        if is_square_occupied(bitboards, current_square) > -1:
+        if (bitboards[14] & (1 << current_square)):
             return False
         current_rank += rank_increment
         current_file += file_increment
@@ -228,7 +367,7 @@ def is_in_rook_scope(bitboards, attacker_square, target_square) -> bool:
         current_file = attacker_file + file_increment
         while current_file != target_file:
             current_square = 8 * attacker_rank + current_file
-            if is_square_occupied(bitboards, current_square) > -1:
+            if (bitboards[14] & (1 << current_square)):
                 # There is a piece in the path of the rook
                 return False
             current_file += file_increment
@@ -237,7 +376,7 @@ def is_in_rook_scope(bitboards, attacker_square, target_square) -> bool:
         current_rank = attacker_rank + rank_increment
         while current_rank != target_rank:
             current_square = 8 * current_rank + attacker_file
-            if is_square_occupied(bitboards, current_square) > -1:
+            if (bitboards[14] & (1 << current_square)):
                 # There is a piece in the path of the rook
                 return False
             current_rank += rank_increment
@@ -254,9 +393,10 @@ def is_in_king_scope(attacker_square, target_square) -> bool:
     return (abs(target_file - attacker_file) <= 1) and (abs(target_rank - attacker_rank) <= 1)
 
 def is_in_check(bitboards, color):
-    king_square = tools.bitscan_lsb(bitboards[5][color])
+    king_square = tools.bitscan_lsb(bitboards[5 + color*6])
     if is_square_attacked(bitboards, king_square, color):
         return True
+    return False
 
 def is_legal_position(bitboards, color):
     # Color = Turn to play

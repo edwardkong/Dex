@@ -1,5 +1,6 @@
-import position, makemove, movegen, tools, game
-import random, sys, time
+import position, makemove, movegen, tools, game, search, evaluate
+import random, sys, time, datetime
+import cProfile
 
 class Board:
     # Board representing position of pieces
@@ -10,6 +11,9 @@ class Board:
             self.newBoard(bitboard)
         else:
             self.newBoard()
+        #self.castling_rights = {'WK': 1, 'WQ': 1, 'BK': 1, 'BQ': 1}
+        self.castling_rights = {'WK': 0, 'WQ': 0, 'BK': 0, 'BQ': 0}
+
 
     def newBoard(self, bitboard: dict = None) -> None:
         if bitboard:
@@ -34,12 +38,10 @@ class Board:
     def print_board(self) -> list:
         text_board = ['-'] * 64 # 8x8
         for piece in range(12):
-            color = piece & 1
-            piece_type = piece >> 1
-            pieces = self.bitboards[piece_type][color]
+            pieces = self.bitboards[piece]
             while pieces:
                 piece_found = tools.bitscan_lsb(pieces)
-                text_board[piece_found] = tools.int_to_char_piece(piece_type).lower() if color == 1 else tools.int_to_char_piece(piece_type)
+                text_board[piece_found] = tools.int_to_char_piece(piece)
                 pieces &= pieces - 1
         return text_board
 
@@ -54,7 +56,6 @@ class GameState:
 
     def newGameUCI(self, moves = None):
         #self.castling_rights = {'WK': 1, 'WQ': 1, 'BK': 1, 'BQ': 1}
-        self.castling_rights = {'WK': 0, 'WQ': 0, 'BK': 0, 'BQ': 0}
         self.turn = 0 # WHITE = 0; BLACK = 1
         self.move = 1 # Move #
         self.move_history = []
@@ -66,6 +67,14 @@ class GameState:
                 self.move += 1
                 self.move_history.append(move)
 
+
+    # Random eval
+    def search(self):
+        moves = movegen.generate_moves(self.board, self.turn)
+        int_move = random.choice(moves)
+        best_move = makemove.int_to_uci(int_move)
+        return int_move, best_move
+
     def startSearchTimed(self, movetime):
         start_time = time.time()
         int_move, best_move = self.search()
@@ -74,27 +83,57 @@ class GameState:
             time.sleep((float(movetime) - elapsed_time_ms) / 1000)
         return int_move, best_move
 
-    def search(self):
-        moves = movegen.generate_moves(self.board, self.turn)
-        int_move = random.choice(moves)
-        best_move = makemove.int_to_uci(int_move)
-        return int_move, best_move
+    # Minimax search
+    def searchMM(self, depth, color, evaluate_func):
+        #eval, move = search.minimax(self.board.bitboards, depth, color, evaluate_func)
+        alpha = float('-inf')
+        beta = float('inf')
+        eval, move = search.minimax_alpha_beta(self.board.bitboards, depth, alpha, beta, color, evaluate_func)
+        return eval, move
+    
+    def startSearchTimedMM(self, movetime, depth, evaluate_func):
+        start_time = time.time()
+        eval, best_move = self.searchMM(depth, self.turn, evaluate_func)
+        elapsed_time_ms = (time.time() - start_time) * 1000
+        if elapsed_time_ms < float(movetime):
+            time.sleep((float(movetime) - elapsed_time_ms) / 1000)
+        return eval, best_move
     
     def makemove(self, move):
         self.board.bitboards = position.update_board(self.board.bitboards, move)
+        self.board.bitboards = position.refresh_occupant_bitboards(self.board.bitboards)
         self.turn = 1 - self.turn
         self.move += 1
         self.move_history.append(move)
-
+    
+    # Need to check if king has moved, if rook has moved, and if castling through check.
+    def updateCastlingRights(self, move):
+        if self.castling_rights['WK'] & move == 20868:
+            self.castling_rights['WK'] = 0
+        elif self.castling_rights['WQ'] & move == 20612:
+            self.castling_rights['WQ'] = 0
+        elif self.castling_rights['BK'] & move == 57276:
+            self.castling_rights['BK'] = 0
+        elif self.castling_rights['BQ'] & move == 57020:
+            self.castling_rights['BQ'] = 0
+        
     def manualNewGame(self, b = None):
         if b is None: self.board.newBoard()
         else: self.board = b
-        self.castling_rights = {'WK': 1, 'WQ': 1, 'BK': 1, 'BQ': 1}
+        #self.castling_rights = {'WK': 1, 'WQ': 1, 'BK': 1, 'BQ': 1}
         self.turn = 0 # WHITE = 0; BLACK = 1
         self.move = 1 # Move #
         self.move_history = []
+        evaluate_func = evaluate.evaluate_board
         
-        while True:
+        m = ['d2d4', 'd7d5', 'c1f4', 'c8f4', 'g1f3', 'g8f6', 'e2e3', 'e7e6', 'c2c3', 'c7c6']
+
+        #for i in m:
+            #self.makemove(makemove.uci_to_int(i, self.board.bitboards))
+
+        i = 2
+        while True:#i:
+            i-=1
             print ("----------------------------------")
             text_board = self.board.print_board()
 
@@ -115,18 +154,25 @@ class GameState:
                 if move == "BB":
                     print(self.board.bitboards)
                 selection = makemove.uci_to_int(move, self.board.bitboards)
-            else:
+            elif evaluate_func == "random":
                 moves = movegen.generate_moves(self.board, self.turn)
                 selection = random.choice(moves)
                 print("Moves considered: ")
                 for move in moves: print(makemove.int_to_uci(move))
                 print(makemove.int_to_uci(selection))
+            elif evaluate_func == evaluate.evaluate_board:
+                depth = float(input("Search depth: "))
+                start_time = time.time()
+                eval, best_move = self.searchMM(depth, self.turn, evaluate_func)
+                elapsed_time_ms = (time.time() - start_time) * 1000
+                print(elapsed_time_ms)
+                print(f"eval: {eval} bestmove: {makemove.int_to_uci(best_move)}")
+                selection = best_move
 
             self.board.bitboards = position.update_board(self.board.bitboards, selection)
             self.turn = 1 - self.turn
             self.move += 1
             self.move_history.append(selection)
-
 
     def is_checkmate(bitboards, color):
         # Can check all possible moves, if there are no resulting legal positions, is checkmate
@@ -137,42 +183,9 @@ class GameState:
         # No legal moves, but not in check
         return True
 
-def testing():
-    mode = input("bb or ng: ")
-    if mode == "ng":
-        game = GameState()
-    else:
-        bb = {0: {0: 268496640, 1: 62205978442989568}, 1: {0: 66, 1: 39582418599936}, 2: {0: 36, 1: 2594073385365405696}, 3: {0: 129, 1: 9295429630892703744}, 4: {0: 9007199254740992, 1: 576460752303423488}, 5: {0: 16, 1: 1152921504606846976}}
-        game = GameState(Board(bb))
-
 if __name__ == "__main__":
     ng = game.GameState()
-    while True:
-        command = input()
-        if command == "uci":
-            id = "id name Dex 0.0\nid author EK\n"
-            sys.stdout.write("uciok") 
-            sys.stdout.write(id)
-            
-        elif command == "option":
-            sys.stdout.write()
-        elif command == "debug":
-            pass
-        elif command == "isready":
-            # Set tablebases
-            sys.stdout.write("readyok")
-        elif command == "ucinewgame":
-            # New game
-            sys.stdout.write("readyok")
-        elif command[:23] == "position startpos moves":
-            moves = command[23:].split()
-            for move in moves:
-                ng.makemove(move)
-            
-        elif command[:2] == "go":
-            move = ng.search()
-            sys.stdout.write(f"bestmove {move}")
-            ng.makemove(move)
-        elif command == quit:
-            quit()
-
+    ng.manualNewGame()
+    cProfile.run('ng.manualNewGame()')
+    print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    
