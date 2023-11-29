@@ -3,6 +3,17 @@ def bitscan_lsb(bits):
     # Find the index of the least significant set bit (LSB)
     return (bits & -bits).bit_length() - 1
 
+def bitscan_msb(bits):
+    if bits == 0:
+        return None  # No set bit in the number
+
+    position = 0
+    while bits:
+        bits >>= 1
+        position += 1
+
+    return position
+
 def char_to_int_piece(piece):
     map = {
         "PAWN": 0,
@@ -28,17 +39,47 @@ def int_to_char_piece(piece):
         2: "B",
         3: "R",
         4: "Q",
-        5: "K"
+        5: "K",
+        6: "p",
+        7: "n",
+        8: "b",
+        9: "r",
+        10: "q",
+        11: "k",
     }
     if piece in map.keys():
         return map.get(piece)
 
-def combine_bitboard(bitboards: dict, color = None):
+def combine_bitboard(bitboards: list, color = None):
     result_bitboard = 0
     if color is None:
-        for board in bitboards:
-            result_bitboard |= board
+        for piece in range(12):
+            result_bitboard |= bitboards[piece]
     else:
-        for i in range(6):
-            result_bitboard |= bitboards[i][color]
+        for piece in range(6):
+            result_bitboard |= bitboards[piece + color*6]
+
     return result_bitboard
+
+def print_bitboard(bitboard):
+    for rank in range(7, -1, -1):
+        row = []
+        for file in range(0, 7):
+            square = rank * 8 + file
+            if (bitboard & (1 << square)) != 0:
+                row.append('1')
+            else:
+                row.append('0')
+        print(' '.join(row))
+
+def parse_move(move):
+    from_square = move & 0x3F  # Source square
+    to_square = (move >> 6) & 0x3F  # Destination square
+    piece_type = (move >> 12) & 0x7  # Piece type (0-5)
+    color = (move >> 15) & 0x1
+
+    return from_square, to_square, piece_type, color
+
+def encode_move(from_square, to_square, piece_type, color):
+    move = from_square | (to_square << 6) | (piece_type << 12) | (color << 15)
+    return move

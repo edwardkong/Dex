@@ -20,7 +20,7 @@ def uci_to_int(lan_move, bitboards):
         color = piece_color & 1
         piece_type = piece_color >> 1
 
-        if (bitboards[piece_type][color] & (1 << from_index)):
+        if (bitboards[piece_type + color*6] & (1 << from_index)):
             break
     else:
         print("Invalid move: No piece found on the source square.")
