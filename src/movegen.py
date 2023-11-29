@@ -1,14 +1,7 @@
 import game, position, tools, makemove
 
-def generate_moves(board, color):
+def generate_moves(bitboards, color):
     moves = []
-    
-    if type(board) is list:
-        bitboards = board
-        castling_rights = {'WK': 0, 'WQ': 0, 'BK': 0, 'BQ': 0}
-    else:
-        bitboards = board.bitboards
-        castling_rights = board.castling_rights
     
     # Iterate through all pieces of the given color
     for piece_type in range(6):
@@ -18,7 +11,7 @@ def generate_moves(board, color):
             from_square = tools.bitscan_lsb(pieces)
             
             # Generate moves for the current piece
-            piece_moves = generate_piece_moves(bitboards, piece_type, from_square, color, castling_rights)
+            piece_moves = generate_piece_moves(bitboards, piece_type, from_square, color)
             
             # Add the moves to the list
             moves.extend(piece_moves)
@@ -29,7 +22,7 @@ def generate_moves(board, color):
     return moves
 
 
-def generate_piece_moves(bitboards, piece_type, from_square, color, castling_rights, last_move = None):
+def generate_piece_moves(bitboards, piece_type, from_square, color, last_move = None):
     moves = []
 
     in_los = position.in_los(bitboards, color)
@@ -84,7 +77,7 @@ def generate_piece_moves(bitboards, piece_type, from_square, color, castling_rig
             else:
                 moves.append(move)
     elif piece_type == 5: # King
-        for candidate in generate_king_moves(bitboards, from_square, color, castling_rights):
+        for candidate in generate_king_moves(bitboards, from_square, color):
             move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
             if position.is_legal_position(position.simulate_move(bitboards, move), 1 - color):
                 moves.append(move)
@@ -263,7 +256,7 @@ def generate_queen_moves(bitboards, from_square, color):
                 new_rank, new_file = new_rank + move[0], new_file + move[1]
     return candidate
 
-def generate_king_moves(bitboards, from_square, color, castling_rights: dict = None):
+def generate_king_moves(bitboards, from_square, color):
     candidate = []
     current_rank, current_file = divmod(from_square, 8)
 

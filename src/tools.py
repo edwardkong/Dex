@@ -60,3 +60,26 @@ def combine_bitboard(bitboards: list, color = None):
             result_bitboard |= bitboards[piece + color*6]
 
     return result_bitboard
+
+def print_bitboard(bitboard):
+    for rank in range(7, -1, -1):
+        row = []
+        for file in range(0, 7):
+            square = rank * 8 + file
+            if (bitboard & (1 << square)) != 0:
+                row.append('1')
+            else:
+                row.append('0')
+        print(' '.join(row))
+
+def parse_move(move):
+    from_square = move & 0x3F  # Source square
+    to_square = (move >> 6) & 0x3F  # Destination square
+    piece_type = (move >> 12) & 0x7  # Piece type (0-5)
+    color = (move >> 15) & 0x1
+
+    return from_square, to_square, piece_type, color
+
+def encode_move(from_square, to_square, piece_type, color):
+    move = from_square | (to_square << 6) | (piece_type << 12) | (color << 15)
+    return move

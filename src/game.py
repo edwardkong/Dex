@@ -106,17 +106,6 @@ class GameState:
         self.turn = 1 - self.turn
         self.move += 1
         self.move_history.append(move)
-    
-    # Need to check if king has moved, if rook has moved, and if castling through check.
-    def updateCastlingRights(self, move):
-        if self.castling_rights['WK'] & move == 20868:
-            self.castling_rights['WK'] = 0
-        elif self.castling_rights['WQ'] & move == 20612:
-            self.castling_rights['WQ'] = 0
-        elif self.castling_rights['BK'] & move == 57276:
-            self.castling_rights['BK'] = 0
-        elif self.castling_rights['BQ'] & move == 57020:
-            self.castling_rights['BQ'] = 0
         
     def manualNewGame(self, b = None):
         if b is None: self.board.newBoard()
