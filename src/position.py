@@ -389,6 +389,25 @@ def is_legal_position(bitboards, color):
         return False
     return True
 
+def is_a_capture(bitboards, move, color):
+    from_square = move & 0x3F  # Source square
+    to_square = (move >> 6) & 0x3F  # Destination square
+    piece_type = (move >> 12) & 0x7  # Piece type (0-5)
+    color = (move >> 15) & 0x1  # Color (0 for white, 1 for black)
+    if bitboards[12 + color] & (1 << to_square):
+        if bitboards[color*6] & (1 << to_square):
+            return 1
+        if bitboards[1 + color*6] & (1 << to_square):
+            return 2
+        if bitboards[2 + color*6] & (1 << to_square):
+            return 3
+        if bitboards[3 + color*6] & (1 << to_square):
+            return 4
+        if bitboards[4 + color*6] & (1 << to_square):
+            return 5
+    else:
+        return 0
+
 
 def get_scope(bitboards, piece_type, square, color):
     scope = []

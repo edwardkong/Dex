@@ -121,9 +121,9 @@ class GameState:
         #for i in m:
             #self.makemove(makemove.uci_to_int(i, self.board.bitboards))
 
-        i = 6
+        #i = 4
         while True:
-            i-=1
+            #i-=1
             print ("----------------------------------")
             text_board = self.board.print_board()
 
