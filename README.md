@@ -1,5 +1,14 @@
-# Dex
-Chess engine
+# Dex Chess engine
+
+First bot win!
+12.11.26am 11.29.2023
+bernstein-2ply 1437 (0-1) dex_engine 1260
+https://lichess.org/STazc9uN/black
+
+0.0.3
+- checkmate and stalemate evaluation
+- check if a move is a capture, prioritize for move ordering in AB pruning
+
 0.0.2
 - Castling implemented
 - Castling rights stored as bitboard
