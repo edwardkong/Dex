@@ -1,4 +1,4 @@
-import game, position, tools, makemove
+import game, board, tools
 
 DIRECTIONS = [
         (1, 1), (1, -1), (-1, 1), (-1, -1),

@@ -1,4 +1,4 @@
-import scope, 
+import scope, tools
 
 class Board:
     # Board representing position of pieces
@@ -7,6 +7,12 @@ class Board:
             self.newBoard(bitboard)
         else:
             self.newBoard()
+
+    def newBoard(self) -> None:
+        self.initialize_bitboard()
+        self.initialize_occupants()
+        self.initialize_castling()
+        self.initialize_attack_map()
 
     def initialize_bitboard(self):
         self.bitboards = [0] * 12
@@ -36,12 +42,16 @@ class Board:
     def initialize_castling(self):
         self.castling_rights = 0b1111
 
-    def newBoard(self) -> None:
-        self.initialize_bitboard()
-        self.initialize_occupants()
-        self.initialize_castling()
+    def make_move(self, move):
+        """Updates the board given a move."""
+        self.attack_map = self.update_attack_map(move)
+        self.update_consolidated_attack_maps()
+        self.bitboards = self.update_board(move)
+        self.refresh_occupant_bitboards()
+        #self.castling_rights = self.update_castling_rights(move)
+        return self
 
-    def updateBoard(self, move, board=None):
+    def update_board(self, move, board=None):
         if board is None:
             board = self
 
@@ -238,7 +248,7 @@ class Board:
         """Initializes attack maps."""
         self.attack_map = [0] * 14
 
-    def generate_attack_map(self, board = None):
+    def generate_attack_map(self, board=None):
         """
         Returns bitboards representing squares attacked by each piece and color complex.
         0 - 5: White pawn, knight, bishop, rook, queen, king
@@ -258,19 +268,18 @@ class Board:
 
         board.attack_map[12] = board.attack_map[0] | board.attack_map[1] | board.attack_map[2] | board.attack_map[3] | board.attack_map[4] | board.attack_map[5]
         board.attack_map[13] = board.attack_map[6] | board.attack_map[7] | board.attack_map[8] | board.attack_map[9] | board.attack_map[10] | board.attack_map[11]
-        return board.attack_map
 
-    def get_attack_map_for_pieces(self, piece_type, color, pieces, board = None):
+    def get_attack_map_for_pieces(self, piece_type, color, pieces, board=None):
         attack_map = 0
         while pieces:
                 square = pieces & -pieces
-                for move in scope.get_scope_from_square(board, square, color, piece_type):
+                for move in scope.get_scope_from_square(self.board, square, color, piece_type):
                     attack_map |= move
                 pieces &= pieces - 1
         return attack_map
 
     # Recalculates sliding pieces' attack maps after a move, thus accepting a copy of occupants after the move is made as opposed to applying the move to the board.
-    def get_attack_map_for_sliding_pieces(self, piece_type, color, pieces, occupants = None):
+    def get_attack_map_for_sliding_pieces(self, piece_type, color, pieces, occupants=None):
         if occupants == None:
             occupants = self.occupants
         attack_map = 0
@@ -281,7 +290,7 @@ class Board:
                 pieces &= pieces - 1
         return attack_map
 
-    def update_attack_map(self, move, board = None):
+    def update_attack_map(self, move, board=None):
         """Updates the attack maps given a move."""
         if board is None:
             board = self
@@ -349,10 +358,10 @@ class Board:
                     pieces = board.bitboards[piece]
                     attack_map[piece] = board.get_attack_map_for_sliding_pieces(piece % 6, 1 - color, pieces, occupants_after_move)
                     break
-        
-        return attack_map
 
-    def update_consolidated_attack_maps(self, board = None):
+        return attack_map
+        
+    def update_consolidated_attack_maps(self, board=None):
         """Updates instance attack maps for white & black."""
         if board is None:
             board = self
@@ -366,11 +375,11 @@ class Board:
         """Returns if true if a square is attacked by opponent."""
         return self.attack_map[12 + color] & (1 << square)
 
-    def is_square_occupied(self, square, color = None):
+    def is_square_occupied(self, square, color=None):
         """Returns true if a square is occupied by the specified color. If no color is specified, returns true if the square is occupied by any piece."""
         return self.occupants[color] & (1 << square) if color else self.occupants[2] & (1 << square)
 
-    def is_in_check(self, color, board = None):
+    def is_in_check(self, color, board=None):
         if board is None:
             board = self
         return board.bitboards[5 + color * 6] & board.attack_map[12 + color]

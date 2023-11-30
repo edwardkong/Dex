@@ -1,10 +1,9 @@
-import position, makemove, movegen, tools, game, search, evaluate
-import random, sys, time, datetime
+import position, makemove, movegenerator, tools, game, search, evaluate, board
+import random, time, datetime
 import cProfile
 
-
 class GameState:
-    def __init__(self, board: Board = None):
+    def __init__(self, board: Board=None):
         if board is None:
             self.board = Board()
             self.newGameUCI()
@@ -13,34 +12,23 @@ class GameState:
             self.newGame(board)
 
     def newGameUCI(self, moves=None):
-        # self.castling_rights = {'WK': 1, 'WQ': 1, 'BK': 1, 'BQ': 1}
         self.turn = 0  # WHITE = 0; BLACK = 1
-        self.move = 1  # Move #
+        self.move = 1  # Move number (Ply)
         self.move_history = []
 
         if moves:
             for move in moves:
-                self.board.bitboards = position.update_board(self.board.bitboards, move)
-                self.board.bitboards = position.refresh_occupant_bitboards(
-                    self.board.bitboards
-                )
+                self.board.update_board(move)
                 self.turn = 1 - self.turn
                 self.move += 1
                 self.move_history.append(move)
 
     # Random eval
     def search(self):
-        moves = movegen.generate_moves(self.board, self.turn)
+        mg = movegenerator(self.board, self.turn)
+        moves = mg.generate_moves(self.board, self.turn)
         int_move = random.choice(moves)
         best_move = makemove.int_to_uci(int_move)
-        return int_move, best_move
-
-    def startSearchTimed(self, movetime):
-        start_time = time.time()
-        int_move, best_move = self.search()
-        elapsed_time_ms = (time.time() - start_time) * 1000
-        if elapsed_time_ms < float(movetime):
-            time.sleep((float(movetime) - elapsed_time_ms) / 1000)
         return int_move, best_move
 
     # Minimax search
@@ -145,15 +133,6 @@ class GameState:
             self.turn = 1 - self.turn
             self.move += 1
             self.move_history.append(selection)
-
-    def is_checkmate(bitboards, color):
-        # Can check all possible moves, if there are no resulting legal positions, is checkmate
-        # No legal moves, and in check
-        return True
-
-    def is_stalemate(bitboards, color):
-        # No legal moves, but not in check
-        return True
 
 
 if __name__ == "__main__":
