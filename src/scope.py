@@ -1,13 +1,34 @@
 
-    def get_scope_from_square(board, from_square, color, piece_type):
-        if piece_type == 0:
-            return generate_pawn_scope(from_square, color)
-        elif piece_type == 1:
-            return generate_knight_scope(from_square)
-        elif piece_type in (2, 3, 4):
-            return generate_sliding_scope(board.occupants, from_square, color, piece_type)
-        elif piece_type == 5:
-            return generate_king_scope(from_square)
+def get_scope_from_square(board, from_square, color, piece_type):
+    if piece_type == 0:
+        return generate_pawn_scope(from_square, color)
+    elif piece_type == 1:
+        return generate_knight_scope(from_square)
+    elif piece_type in (2, 3, 4):
+        return generate_sliding_scope(board.occupants, from_square, color, piece_type)
+    elif piece_type == 5:
+        return generate_king_scope(from_square)
+
+def generate_moves(bitboards, color):
+    moves = []
+    
+    # Iterate through all pieces of the given color
+    for piece_type in range(6):
+        pieces = bitboards[piece_type + color*6]
+        while pieces:
+            # Find the index of the least significant set bit (LSB)
+            from_square = tools.bitscan_lsb(pieces)
+            
+            # Generate moves for the current piece
+            piece_moves = generate_piece_moves(bitboards, piece_type, from_square, color)
+            
+            # Add the moves to the list
+            moves.extend(piece_moves)
+
+            # Clear the LSB to move to the next piece
+            pieces &= pieces - 1
+    
+    return moves
 
 def generate_pawn_scope(from_square, color):
         """Returns pawn's scope given a square."""
