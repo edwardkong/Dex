@@ -178,6 +178,7 @@ def update_board(bitboards, move) -> list:
     return bitboards
 
 def simulate_move(bitboards, move):
+    # Passing object, need to deep copy
     temp_board = bitboards.copy()
 
     return refresh_occupant_bitboards(update_board(temp_board, move))
