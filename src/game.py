@@ -365,7 +365,12 @@ class Board:
         return board.attack_map
             
     def is_square_attacked(self, square):
+        pass
 
+    def is_in_check(self, color, board = None):
+        if board is None:
+            board = self
+        return board.bitboards[5 + color * 6] & board.attack_map[12 + color]
 
     def print_board(self) -> list:
         text_board = ["-"] * 64  # 8x8
