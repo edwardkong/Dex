@@ -1,30 +1,34 @@
-import game, board, tools
+import board, tools, scope
 
 DIRECTIONS = [
         (1, 1), (1, -1), (-1, 1), (-1, -1),
         (1, 0), (-1, 0), (0, 1), (0, -1)
 ]
+KNIGHT_MOVES = {(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)}
+PAWN_ATTACKS = {(-1, 1), (-1, -1), (1, 1), (1, -1)}
 
 class MoveGenerator:
 
     def __init__(self, board, color):
         self.board = board
         self.color = color
+        #self.attacked_ray_mask = 0
         self.pinned_ray_mask = 0
         self.check_ray_mask = 0
+        self.check_jump_mask = 0
         self.in_check = False
         self.double_check = False
-        self.king_square = self.board.bitboards[5 + self.color * 6]
+        self.king_square = tools.bitscan_lsb(self.board.bitboards[5 + self.color * 6])
         self.moves = []
 
         self.calculate_attacks_on_king(self.board)
 
     def generate_moves(self):
         """Returns all moves for all pieces in position for a color."""
-        self.moves.extend(generate_king_moves(self.king_square))
+        self.moves.extend(self.generate_king_moves())
     
         # Only the king can move in double check
-        if double_check:
+        if self.double_check:
             return self.moves
         else:
             # Iterate through all pieces of the given color
@@ -56,10 +60,24 @@ class MoveGenerator:
             new_rank, new_file = rank + d[0], file + d[1]
             new_square = 8 * new_rank + new_file
             if 0 <= new_rank < 8 and 0 <= new_file < 8:
-                if not self.board.occupants[color] & (1 << new_square) and not self.board.is_square_attacked(new_square):
+                if not self.board.occupants[color] & (1 << new_square) and not self.check_jump_mask & (1 << new_square):
                     candidate.append(from_square | (new_square << 6) | (5 << 12) | (color << 15))
         # Castle
         if not self.in_check:
+            kingside, queenside = scope.can_castle(self.board, self.color)
+            if color:
+                if kingside:
+                    candidate.append(60 | (62 << 6) | (5 << 12) | (color << 15))
+                if queenside:
+                    candidate.append(60 | (58 << 6) | (5 << 12) | (color << 15))
+            else:
+                if kingside:
+                    candidate.append(4 | (6 << 6) | (5 << 12) | (color << 15))
+                if queenside:
+                    candidate.append(4 | (2 << 6) | (5 << 12) | (color << 15))
+
+            """ 
+            #Fix using attack maps
             # White Kingside
             if (from_square == 4) & (self.board.castling_rights & (1 << 3)):
                 if not self.board.is_square_occupied(5) and not self.board.is_square_occupied(6) and not self.board.is_square_attacked(5, color) and not self.board.is_square_attacked(6, color):
@@ -76,46 +94,54 @@ class MoveGenerator:
             if (from_square == 60) & (self.board.castling_rights & (1 << 0)):
                 if not self.board.is_square_occupied(59) and not self.board.is_square_occupied(58) and not self.board.is_square_attacked(59, color) and not self.board.is_square_attacked(58, color):
                         candidate.append(60 | (58 << 6) | (5 << 12) | (color << 15))        
-        
+        """
         return candidate      
     
     def generate_piece_moves(self, piece_type, from_square):
         """Returns legal moves for each non-king piece."""
-        piece_pseudo_functions = {
-            0: (self.generate_pawn_push, self.generate_pawn_captures),
-            1: (self.generate_knight_moves,),
-            2: (self.generate_sliding_moves,),
-            3: (self.generate_sliding_moves,),
-            4: (self.generate_sliding_moves,)
-        }
+        jumper_pseudo_functions = [
+            self.generate_pawn_push, self.generate_pawn_captures,
+            self.generate_knight_moves
+        ]
+        slider_pseudo_functions = [
+            self.generate_sliding_moves,
+            self.generate_sliding_moves,
+            self.generate_sliding_moves
+        ]
         
         candidate = []
         legal_moves = []
-        color = self.color       
+        color = self.color
         
-        for func in piece_pseudo_functions[piece_type]:
-            candidate.extend(func(from_square))
+        if piece_type == 0:
+            candidate.extend(self.generate_pawn_push(from_square))
+            candidate.extend(self.generate_pawn_captures(from_square))
+        elif piece_type == 1:
+            candidate.extend(self.generate_knight_moves(from_square))
+        elif piece_type in (2, 3, 4):
+            candidate.extend(self.generate_sliding_moves(from_square, piece_type))
         
         for to_square in candidate:
-            # Piece is pinned and destination is outside of the pin
-            if (self.pinned_ray_mask & (1 << from_square) and not self.pinned_ray_mask & (1 << to_square)) or
-                # King is in check and piece destination is not in check_ray (blocking)
-                (if self.in_check and not self.check_ray_mask & (1 << to_square)):
+            # Piece is pinned and destination is outside of the pin or
+            # King is in check and piece destination is not in check_ray (blocking)
+            if (self.pinned_ray_mask & (1 << from_square) and not self.pinned_ray_mask & (1 << to_square)) or \
+                (self.in_check and not self.check_ray_mask & (1 << to_square)):
                     continue
-            move = from_square | (new_square << 6) | (piece_type << 12) | (color << 15)
+            move = from_square | (to_square << 6) | (piece_type << 12) | (color << 15)
             legal_moves.append(move)
         
         return legal_moves
 
-    def calculate_attacks_on_king(self, board, color):
+    def calculate_attacks_on_king(self, board):
         """Search in rays expanding from the king's location to find attackers and pins."""
         bitboards = self.board.bitboards
         occupants = self.board.occupants
-        attack_map = self.board.attack_map
+        #attack_map = self.board.attack_map
         color = self.color
+        king_square = self.king_square
 
-        king_rank = self.king_square // 8
-        king_file = self.king_square % 8
+        king_rank = king_square // 8
+        king_file = king_square % 8
 
         ray_mask = 0
 
@@ -123,7 +149,7 @@ class MoveGenerator:
         
         start = 0 if bitboards[2 + color * 6] or bitboards[4 + color * 6] else 4
         end = 8 if bitboards[3 + color * 6] or bitboards[4 + color * 6] else 4
-        
+
         for d in DIRECTIONS[start:end]:
             diag = d[0] and d[1]
             new_rank, new_file = king_rank + d[0], king_file + d[1]
@@ -142,7 +168,7 @@ class MoveGenerator:
                         break
                 # Opponent piece occupied
                 elif occupants[1 - color] & (1 << new_square):
-                    for piece_type in bitboards[piece_type + (1 - color) * 6]:
+                    for piece_type in range(6):
                         if bitboards[piece_type + (1 - color) * 6] & (1 << new_square):
                             break
                     # Opponent piece moves along ray
@@ -158,57 +184,49 @@ class MoveGenerator:
                     # Opponent piece does not have sight
                     else:
                         break
+                new_rank += d[0]
+                new_file += d[1]
             # King must move if double checked
             if self.double_check:
                 break
-        
+
         # Search for knight attacks
-        if attack_map[1 + color * 6] & (1 << self.king_square):
-            self.double_check = self.in_check
-            self.in_check = True
+        knights = bitboards[1 + color * 6]
+        while knights:
+            knight_square = tools.bitscan_lsb(knights)
+            r_diff = abs((knight_square // 8) - (king_square // 8))
+            f_diff = abs((knight_square % 8) - (king_square % 8))
+            if (r_diff, f_diff) not in KNIGHT_MOVES:
+                knights &= knights - 1
+                continue
+            for move in scope.generate_knight_scope(knight_square):
+                self.check_jump_mask |= move
+                if move & (1 << king_square):
+                    self.double_check = self.in_check
+                    self.in_check = True
+            knights &= knights - 1
 
         # Search for pawn attacks
-        if attack_map[color * 6] & (1 << self.king_square):
-            self.double_check = self.in_check
-            self.in_check = True
+        pawns = bitboards[1 + color * 6]
+        while pawns:
+            pawn_square = tools.bitscan_lsb(pawns)
+            r_diff = abs((pawn_square // 8) - (king_square // 8))
+            f_diff = abs((pawn_square % 8) - (king_square % 8))
+            if (r_diff, f_diff) not in PAWN_ATTACKS:
+                pawns &= pawns - 1
+                continue
+            for move in scope.generate_pawn_scope(pawn_square, color):
+                self.check_jump_mask |= move
+                if move & (1 << king_square):
+                    self.double_check = self.in_check
+                    self.in_check = True
+            pawns &= pawns -1
 
-    def generate_psuedo_moves(board, piece_type, from_square, color):
-        moves = []
-        bitboards = board.bitboards
-
-        # Implement move generation logic for each piece type
-        if piece_type == 0:  # Pawn
-            for candidate in generate_pawn_moves(bitboards, from_square, color):
-                if type(candidate) == str:
-                    promo_piece = tools.char_to_int_piece(candidate[-1])
-                    move = from_square | (int(candidate[:-1]) << 6) | (promo_piece << 12) | (color << 15)
-                else:
-                    move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-        elif piece_type == 1:  # Knight
-            for candidate in generate_knight_moves(bitboards, from_square, color):
-                move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-                
-        elif piece_type == 2:  # Bishop
-            for candidate in generate_bishop_moves(bitboards, from_square, color):
-                move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-                
-        elif piece_type == 3:  # Rook
-            for candidate in generate_rook_moves(bitboards, from_square, color):
-                move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-        elif piece_type == 4:  # Queen
-            for candidate in generate_queen_moves(bitboards, from_square, color):
-                move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-                    moves.append(move)
-        elif piece_type == 5: # King
-            for candidate in generate_king_moves(bitboards, from_square, color):
-                move = from_square | (candidate << 6) | (piece_type << 12) | (color << 15)
-                    moves.append(move)
-        return moves
-
-    def generate_pawn_push(self, from_square, color):
+    def generate_pawn_push(self, from_square):
         """Returns psuedo legal pawn pushes and push promotions."""
         candidate = []
         rank, file = divmod(from_square, 8)
+        color = self.color
         
         # Single step forward
         single_square = from_square + 8 if color == 0 else from_square - 8
@@ -232,10 +250,10 @@ class MoveGenerator:
         rank = from_square // 8
 
         # Get the squares that the pawn can potentially capture to
-        scope = scope.generate_pawn_scope(from_square, self.color)
+        pawn_scope = scope.generate_pawn_scope(from_square, self.color)
 
         # Check each square to see if it contains an opponent's piece
-        for square in scope:
+        for square in pawn_scope:
             if self.board.occupants[1 - self.color] & (1 << square):
                 # If a capture will lead to a promotion, add the promotion moves
                 if (self.color == 0 and rank == 6) or (self.color == 1 and rank == 1):
@@ -249,8 +267,8 @@ class MoveGenerator:
         """
         Returns psuedo legal pawn en passant
         ! Not yet implemented !
-        """
-            en_passant_legal = False
+        
+        en_passant_legal = False
         try:
             if last_move is not None:
                 last_move_from = ord(last_move[0]) - ord('a') + (int(last_move[1]) - 1) * 8
@@ -272,16 +290,18 @@ class MoveGenerator:
                 candidate.append(last_move_to - 8)
 
         return candidate
+        """
+        pass
 
     def generate_knight_moves(self, from_square):
         """Returns psuedo legal knight moves."""
         candidate = []
 
         # Get the squares that the knight can potentially move to
-        scope = scope.generate_knight_scope(from_square)
+        knight_scope = scope.generate_knight_scope(from_square)
 
         # Check each square to see if it is occupied by an opponent's piece or is empty
-        for square in scope:
+        for square in knight_scope:
             if not self.board.occupants[self.color] & (1 << square):
                 candidate.append(square)
 
@@ -300,10 +320,11 @@ class MoveGenerator:
             while 0 <= new_rank < 8 and 0 <= new_file < 8:
                 new_square = 8 * new_rank + new_file
                 # Square occupied
-                if not (self.occupants[self.color] & (1 << new_square)):
+                if not (self.board.occupants[self.color] & (1 << new_square)):
                     candidate.append(new_square)
                 else:
                     break
-                rank, file = new_rank + d[0], new_file + d[1]
+                new_rank += d[0] 
+                new_file += d[1]
 
         return candidate

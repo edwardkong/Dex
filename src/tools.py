@@ -84,13 +84,13 @@ def encode_move(from_square, to_square, piece_type, color):
     move = from_square | (to_square << 6) | (piece_type << 12) | (color << 15)
     return move
 
-def print_board(self) -> list:
+def print_board(board) -> list:
     text_board = ["-"] * 64  # 8x8
     for piece in range(12):
-        pieces = self.bitboards[piece]
+        pieces = board.bitboards[piece]
         while pieces:
-            piece_found = tools.bitscan_lsb(pieces)
-            text_board[piece_found] = tools.int_to_char_piece(piece)
+            piece_found = bitscan_lsb(pieces)
+            text_board[piece_found] = int_to_char_piece(piece)
             pieces &= pieces - 1
     return text_board
 

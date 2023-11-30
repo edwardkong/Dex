@@ -1,4 +1,4 @@
-import scope, tools
+import scope, tools, copy
 
 class Board:
     # Board representing position of pieces
@@ -12,7 +12,7 @@ class Board:
         self.initialize_bitboard()
         self.initialize_occupants()
         self.initialize_castling()
-        self.initialize_attack_map()
+        #self.initialize_attack_map()
 
     def initialize_bitboard(self):
         self.bitboards = [0] * 12
@@ -44,8 +44,8 @@ class Board:
 
     def make_move(self, move):
         """Updates the board given a move."""
-        self.attack_map = self.update_attack_map(move)
-        self.update_consolidated_attack_maps()
+        #self.attack_map = self.update_attack_map(move)
+        #self.update_consolidated_attack_maps()
         self.bitboards = self.update_board(move)
         self.refresh_occupant_bitboards()
         #self.castling_rights = self.update_castling_rights(move)
@@ -56,6 +56,7 @@ class Board:
             board = self
 
         bitboards = board.bitboards
+        occupants = board.occupants
         castling_rights = board.castling_rights
 
         # Extract information from the move
@@ -212,7 +213,7 @@ class Board:
 
         # Check if it's a capture
         if piece_type in (1, 2, 3, 4, 5):
-            if occupancy_bitboards[1 - color] & (1 << to_square):
+            if occupants[1 - color] & (1 << to_square):
                 for captured_piece in range(6):
                     if bitboards[captured_piece + (1 - color) * 6] & (1 << to_square):
                         bitboards[captured_piece + (1 - color) * 6] &= ~(
@@ -229,8 +230,12 @@ class Board:
 
     def simulate_move(self, move):
         """Simulate a move without updating the board"""
-        board_copy = self.board.copy()
-        board_copy.updateBoard(move)
+        board_copy = copy.deepcopy(self)
+        #board_copy.update_attack_map(move)
+        #board_copy.update_consolidated_attack_maps()
+        board_copy.update_board(move)
+        board_copy.refresh_occupant_bitboards()
+
         return board_copy
 
     def refresh_occupant_bitboards(self, board=None):
@@ -248,7 +253,7 @@ class Board:
         """Initializes attack maps."""
         self.attack_map = [0] * 14
 
-    def generate_attack_map(self, board=None):
+    def generate_attack_map(self):
         """
         Returns bitboards representing squares attacked by each piece and color complex.
         0 - 5: White pawn, knight, bishop, rook, queen, king
@@ -256,30 +261,26 @@ class Board:
         12: White combined
         13: Black combined
         """
-        if board is None:
-            board = self
-        attack_map = [0] * 14
-
         for piece in range(12):
             piece_type = piece % 6
             color = piece // 6
-            pieces = board.bitboards[piece_type + color * 6]
-            board.attack_map[piece] = self.get_attack_map_for_piece_type(piece_type, color, pieces, board)
+            pieces = self.bitboards[piece_type + color * 6]
+            self.attack_map[piece] = self.get_attack_map_for_piece_type(piece_type, color, pieces, self)
 
-        board.attack_map[12] = board.attack_map[0] | board.attack_map[1] | board.attack_map[2] | board.attack_map[3] | board.attack_map[4] | board.attack_map[5]
-        board.attack_map[13] = board.attack_map[6] | board.attack_map[7] | board.attack_map[8] | board.attack_map[9] | board.attack_map[10] | board.attack_map[11]
+        self.attack_map[12] = self.attack_map[0] | self.attack_map[1] | self.attack_map[2] | self.attack_map[3] | self.attack_map[4] | self.attack_map[5]
+        self.attack_map[13] = self.attack_map[6] | self.attack_map[7] | self.attack_map[8] | self.attack_map[9] | self.attack_map[10] | self.attack_map[11]
 
     def get_attack_map_for_pieces(self, piece_type, color, pieces, board=None):
         attack_map = 0
         while pieces:
                 square = pieces & -pieces
-                for move in scope.get_scope_from_square(self.board, square, color, piece_type):
+                for move in scope.get_scope_from_square(self, square, color, piece_type):
                     attack_map |= move
                 pieces &= pieces - 1
         return attack_map
 
-    # Recalculates sliding pieces' attack maps after a move, thus accepting a copy of occupants after the move is made as opposed to applying the move to the board.
     def get_attack_map_for_sliding_pieces(self, piece_type, color, pieces, occupants=None):
+        """Recalculates sliding pieces' attack maps after a move, thus accepting a copy of occupants after the move is made as opposed to applying the move to the board."""
         if occupants == None:
             occupants = self.occupants
         attack_map = 0
@@ -291,7 +292,7 @@ class Board:
         return attack_map
 
     def update_attack_map(self, move, board=None):
-        """Updates the attack maps given a move."""
+        """Updates the attack maps given a move. Currently works on unupdated board"""
         if board is None:
             board = self
 

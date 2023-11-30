@@ -1,4 +1,7 @@
-import position, makemove, movegen, tools, game, evaluate
+from board import Board
+from movegenerator import MoveGenerator
+
+import moveorder, tools, gamestate, evaluate
 import random, sys, subprocess
 import gc, time
 
@@ -20,9 +23,10 @@ class UCI:
 
             elif parsed_command[0] == "position":
                 if parsed_command[1] == "startpos":
-                    ng = game.GameState()
+                    ng = gamestate.GameState()
+                    ng.newGameUCI()
                     for move in parsed_command[3:]:
-                        int_move = makemove.uci_to_int(move, ng.board.bitboards)
+                        int_move = tools.uci_to_int(move, ng.board.bitboards)
                         ng.makemove(int_move)
 
             elif parsed_command[0] == "go":
@@ -30,16 +34,16 @@ class UCI:
                 elif ng.move < 21: depth = 3
                 else: depth = 4
                 if parsed_command[1] == "movetime":
-                    eval, best_move = ng.startSearchTimedMM(parsed_command[2], depth, eval_func)
-                    print(f"bestmove {makemove.int_to_uci(best_move)}")
+                    eval, best_move = ng.startSearchTimed(parsed_command[2], depth, eval_func)
+                    print(f"bestmove {tools.int_to_uci(best_move)}")
                     ng.makemove(best_move)
                     eval = None
                     best_move = None
                 elif parsed_command[1] == "infinite": # inifinite search
-                    eval, best_move = ng.searchMM(depth, ng.turn, eval_func)
+                    eval, best_move = ng.search(depth, ng.turn, eval_func)
                 else:
-                    eval, best_move = ng.searchMM(depth, ng.turn, eval_func)
-                    print(f"bestmove {makemove.int_to_uci(best_move)}")
+                    eval, best_move = ng.search(depth, ng.turn, eval_func)
+                    print(f"bestmove {tools.int_to_uci(best_move)}")
                     ng.makemove(best_move)
                     #eval = None
                     #best_move = None
@@ -47,7 +51,7 @@ class UCI:
 
             elif parsed_command[0] == "stop":
                 if best_move:
-                    print(f"bestmove {makemove.int_to_uci(best_move)}")
+                    print(f"bestmove {tools.int_to_uci(best_move)}")
                     ng.makemove(best_move)
                     #gc.collect()
 
