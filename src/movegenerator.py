@@ -20,6 +20,7 @@ class MoveGenerator:
         self.double_check = False
         self.king_square = tools.bitscan_lsb(self.board.bitboards[5 + self.color * 6])
         self.moves = []
+        if self.king_square < 0: print(f" mg {self.king_square} {self.board.bitboards}")
 
         self.calculate_attacks_on_king(self.board)
 
@@ -98,17 +99,7 @@ class MoveGenerator:
         return candidate      
     
     def generate_piece_moves(self, piece_type, from_square):
-        """Returns legal moves for each non-king piece."""
-        jumper_pseudo_functions = [
-            self.generate_pawn_push, self.generate_pawn_captures,
-            self.generate_knight_moves
-        ]
-        slider_pseudo_functions = [
-            self.generate_sliding_moves,
-            self.generate_sliding_moves,
-            self.generate_sliding_moves
-        ]
-        
+        """Returns legal moves for each non-king piece."""        
         candidate = []
         legal_moves = []
         color = self.color
@@ -151,7 +142,7 @@ class MoveGenerator:
         end = 8 if bitboards[3 + color * 6] or bitboards[4 + color * 6] else 4
 
         for d in DIRECTIONS[start:end]:
-            diag = d[0] and d[1]
+            diag = abs(d[0]) == abs(d[1])
             new_rank, new_file = king_rank + d[0], king_file + d[1]
             friendly_piece_encountered = 0
 
@@ -172,7 +163,7 @@ class MoveGenerator:
                         if bitboards[piece_type + (1 - color) * 6] & (1 << new_square):
                             break
                     # Opponent piece moves along ray
-                    if piece_type == 4 or diag & piece_type == 2 or not diag & piece_type == 3:
+                    if (piece_type == 4) or (diag & piece_type == 2) or ((not diag) & (piece_type == 3)):
                         # Piece is pinned
                         if friendly_piece_encountered:
                             self.pinned_ray_mask |= ray_mask
@@ -201,13 +192,13 @@ class MoveGenerator:
                 continue
             for move in scope.generate_knight_scope(knight_square):
                 self.check_jump_mask |= move
-                if move & (1 << king_square):
+                if king_square & (1 << move):
                     self.double_check = self.in_check
                     self.in_check = True
             knights &= knights - 1
 
         # Search for pawn attacks
-        pawns = bitboards[1 + color * 6]
+        pawns = bitboards[color * 6]
         while pawns:
             pawn_square = tools.bitscan_lsb(pawns)
             r_diff = abs((pawn_square // 8) - (king_square // 8))
@@ -217,7 +208,7 @@ class MoveGenerator:
                 continue
             for move in scope.generate_pawn_scope(pawn_square, color):
                 self.check_jump_mask |= move
-                if move & (1 << king_square):
+                if king_square & (1 << move):
                     self.double_check = self.in_check
                     self.in_check = True
             pawns &= pawns -1
@@ -320,8 +311,11 @@ class MoveGenerator:
             while 0 <= new_rank < 8 and 0 <= new_file < 8:
                 new_square = 8 * new_rank + new_file
                 # Square occupied
-                if not (self.board.occupants[self.color] & (1 << new_square)):
+                if self.board.occupants[self.color] & (1 << new_square):
+                    break
+                if self.board.occupants[1 - self.color] & (1 << new_square):
                     candidate.append(new_square)
+                    break                    
                 else:
                     break
                 new_rank += d[0] 

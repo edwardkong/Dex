@@ -7,12 +7,16 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
 
     ordered_moves = sorted(legal_moves, key=lambda move: moveorder.capture_priority(board, move, color))
 
-    #for m in legal_moves: print(makemove.int_to_uci(m))
+    #for m in legal_moves: 
+    #    if tools.parse_move(m)[1] == 4:
+    #        print(tools.int_to_uci(m))
+    #        print(depth)
+    #        print(color)
     #print(legal_moves)
     #quit()
 
     if not legal_moves:
-        if mg.in_check(color):
+        if mg.in_check:
             if color == 1:
                 return float('100000000'), None
             else:

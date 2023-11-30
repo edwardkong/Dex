@@ -94,6 +94,23 @@ def print_board(board) -> list:
             pieces &= pieces - 1
     return text_board
 
+def print_bitboard(bitboards) -> list:
+    text_board = ["-"] * 64  # 8x8
+    for piece in range(12):
+        pieces = bitboards[piece]
+        while pieces:
+            piece_found = bitscan_lsb(pieces)
+            text_board[piece_found] = int_to_char_piece(piece)
+            pieces &= pieces - 1
+    for rank in range(7, -1, -1):
+        for file in range(8):
+            square = rank * 8 + file
+            print(text_board[square], end=" ")
+        print()
+    
+    return text_board
+
+
 # Standard UCI move notation includes 4 characters, source square and destination square. 
 # Castling is specified by king position (i.e. e1g1).
 # Promotions are specified with 5 characters, to disambiguate promting pieces (i.e. g7g8q)
@@ -143,5 +160,10 @@ def int_to_uci(move):
     t_rank = to_square // 8
     t_s = chr(ord('a') + t_file) + str(t_rank + 1)
 
-
     return f"{f_s}{t_s}"
+
+#print(parse_move(35124))
+#bb = [65280, 66, 36, 129, 8, 16, 67272588153323520, 4755801206503243776, 2594073385365405696, 9295429630892703744, 576460752303423488, 1152921504606846976]
+#print_bitboard(bb)
+
+print(int_to_uci(21188))

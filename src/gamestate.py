@@ -19,7 +19,7 @@ class GameState:
 
         if moves:
             for move in moves:
-                self.board.makemove(move)
+                self.board.make_move(move)
                 self.turn = 1 - self.turn
                 self.move += 1
                 self.move_history.append(move)
@@ -39,8 +39,8 @@ class GameState:
             time.sleep((float(movetime) - elapsed_time_ms) / 1000)
         return eval, best_move
 
-    def makemove(self, move):
-        self.board.makemove(move)
+    def make_move(self, move):
+        self.board.make_move(move)
         self.turn = 1 - self.turn
         self.move += 1
         self.move_history.append(move)
@@ -52,9 +52,8 @@ class GameState:
         evaluate_func = evaluate.evaluate_board
         #evaluate_func = random.choice
 
-        i = 2
+        i = 3
         while i:
-            i -= 1
             print("----------------------------------")
             text_board = tools.print_board(self.board)
 
@@ -97,6 +96,8 @@ class GameState:
             self.turn = 1 - self.turn
             self.move += 1
             self.move_history.append(selection)
+        
+            i -= 1
 
 
 if __name__ == "__main__":
