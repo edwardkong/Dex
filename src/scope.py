@@ -278,7 +278,7 @@ def can_castle(board, color) -> bool:
                     kingside = True
         
         if castling_rights & (1 << 2):
-            if not occupants[1] & (0b11 << 1):
+            if not occupants[1] & (0b11 << 2):
                 if is_square_attacked(board, 3, color) or is_square_attacked(board, 2, color):
                     queenside = False
                 else:
@@ -292,7 +292,7 @@ def can_castle(board, color) -> bool:
                     kingside = True
         
         if castling_rights & (1 << 0):
-            if not occupants[0] & (0b11 << 57):
+            if not occupants[0] & (0b11 << 5):
                 if is_square_attacked(board, 59, color) or is_square_attacked(board, 58, color):
                     queenside = False
                 else:

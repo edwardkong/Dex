@@ -560749,3 +560749,337 @@ eval: 85 bestmove: b8c6
 
 2023-11-29 00:50:02
 (base) ekong@Edwards-MacBook-Pro src % 
+
+(base) ekong@Edwards-MacBook-Pro Dex %  cd /Users/ekong/Documents/Documents/Work/Projects/lichess/lichess-bot/engines/Dex ; /usr/bin/env /usr/bin/python3 /Users/ekong/.vscode/extensions/ms-python.python-2023.20.0/pythonFiles/lib/python/debugpy
+/adapter/../../debugpy/launcher 49172 -- /Users/ekong/Documents/Documents/Work/Projects/lichess/lichess-bot/engines/Dex/src/GameState.py 
+----------------------------------
+r n b q k b n r 
+p p p p p p p p 
+- - - - - - - - 
+- - - - - - - - 
+- - - - - - - - 
+- - - - - - - - 
+P P P P P P P P 
+R N B Q K B N R 
+----------------------------------
+'Move: ' 1
+White to play
+Your turn: e2e4
+----------------------------------
+r n b q k b n r 
+p p p p p p p p 
+- - - - - - - - 
+- - - - - - - - 
+- - - - P - - - 
+- - - - - - - - 
+P P P P - P P P 
+R N B Q K B N R 
+----------------------------------
+'Move: ' 2
+Black to play
+Search depth: 4
+         27553381 function calls (26489029 primitive calls) in 42.984 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   42.984   42.984 <string>:1(<module>)
+        1    0.000    0.000   38.930   38.930 GameState.py:28(search)
+        1    0.000    0.000   42.984   42.984 GameState.py:48(manualNewGame)
+    44348    0.321    0.000    7.720    0.000 board.py:231(simulate_move)
+    44349    0.259    0.000    0.587    0.000 board.py:241(refresh_occupant_bitboards)
+        1    0.000    0.000    0.000    0.000 board.py:45(make_move)
+    44349    0.264    0.000    0.270    0.000 board.py:54(update_board)
+1064352/44348    3.189    0.000    6.542    0.000 copy.py:128(deepcopy)
+   886960    0.120    0.000    0.120    0.000 copy.py:182(_deepcopy_atomic)
+    88696    1.170    0.000    3.167    0.000 copy.py:200(_deepcopy_list)
+    44348    0.496    0.000    4.780    0.000 copy.py:226(_deepcopy_dict)
+   177392    0.204    0.000    0.251    0.000 copy.py:242(_keep_alive)
+    44348    0.477    0.000    5.903    0.000 copy.py:258(_reconstruct)
+    88696    0.102    0.000    0.269    0.000 copy.py:263(<genexpr>)
+        1    0.000    0.000    0.000    0.000 copyreg.py:103(_slotnames)
+    44348    0.037    0.000    0.056    0.000 copyreg.py:94(__newobj__)
+    40433    2.944    0.000    3.684    0.000 evaluate.py:78(evaluate_board)
+   659275    3.926    0.000    9.038    0.000 movegenerator.py:100(generate_piece_moves)
+    44349    0.245    0.000    2.497    0.000 movegenerator.py:12(__init__)
+    44349    2.028    0.000    2.209    0.000 movegenerator.py:135(calculate_attacks_on_king)
+   351461    0.804    0.000    0.922    0.000 movegenerator.py:225(generate_pawn_push)
+   351461    1.021    0.000    1.928    0.000 movegenerator.py:247(generate_pawn_captures)
+    44349    2.840    0.000   18.447    0.000 movegenerator.py:26(generate_moves)
+    87951    0.350    0.000    0.832    0.000 movegenerator.py:296(generate_knight_moves)
+   219863    1.160    0.000    1.219    0.000 movegenerator.py:310(generate_sliding_moves)
+    44349    0.484    0.000    6.012    0.000 movegenerator.py:51(generate_king_moves)
+  1094827    2.690    0.000    2.690    0.000 moveorder.py:2(capture_priority)
+   180648    0.173    0.000    0.210    0.000 scope.py:164(is_in_knight_scope)
+    90324    3.074    0.000    5.280    0.000 scope.py:171(is_square_attacked)
+   270948    0.284    0.000    0.416    0.000 scope.py:201(is_in_bishop_scope)
+   270935    0.197    0.000    0.269    0.000 scope.py:223(is_in_rook_scope)
+    90312    0.267    0.000    0.481    0.000 scope.py:252(is_in_queen_scope)
+    91301    0.090    0.000    0.128    0.000 scope.py:255(is_in_king_scope)
+    41903    0.235    0.000    5.515    0.000 scope.py:262(can_castle)
+   352403    0.747    0.000    0.910    0.000 scope.py:68(generate_pawn_scope)
+   264458    0.124    0.000    0.124    0.000 scope.py:80(<listcomp>)
+    91169    0.443    0.000    0.485    0.000 scope.py:84(generate_knight_scope)
+  44349/1    0.699    0.000   38.930   38.930 search.py:3(minimax_alpha_beta)
+  1094827    1.645    0.000    4.335    0.000 search.py:8(<lambda>)
+        1    0.000    0.000    0.000    0.000 tools.py:101(uci_to_int)
+  3001603    1.511    0.000    1.865    0.000 tools.py:2(bitscan_lsb)
+       64    0.000    0.000    0.000    0.000 tools.py:35(int_to_char_piece)
+   133047    0.329    0.000    0.329    0.000 tools.py:53(combine_bitboard)
+    77278    0.419    0.000    0.419    0.000 tools.py:6(bitscan_msb)
+        2    0.000    0.000    0.000    0.000 tools.py:87(print_board)
+    44348    0.019    0.000    0.019    0.000 {built-in method __new__ of type object at 0x11084ba38}
+  1440684    0.149    0.000    0.149    0.000 {built-in method builtins.abs}
+  1928861    0.272    0.000    0.272    0.000 {built-in method builtins.divmod}
+        1    0.000    0.000   42.984   42.984 {built-in method builtins.exec}
+    88696    0.025    0.000    0.025    0.000 {built-in method builtins.getattr}
+    44349    0.011    0.000    0.011    0.000 {built-in method builtins.hasattr}
+  1463484    0.186    0.000    0.186    0.000 {built-in method builtins.id}
+        2    4.053    2.026    4.053    2.026 {built-in method builtins.input}
+    88696    0.030    0.000    0.030    0.000 {built-in method builtins.isinstance}
+    44348    0.011    0.000    0.011    0.000 {built-in method builtins.issubclass}
+    40797    0.036    0.000    0.036    0.000 {built-in method builtins.max}
+     3547    0.002    0.000    0.002    0.000 {built-in method builtins.min}
+        4    0.000    0.000    0.000    0.000 {built-in method builtins.ord}
+      152    0.001    0.000    0.001    0.000 {built-in method builtins.print}
+    44349    1.509    0.000    5.844    0.000 {built-in method builtins.sorted}
+        1    0.000    0.000    0.000    0.000 {built-in method time.time}
+    44348    0.074    0.000    0.074    0.000 {method '__reduce_ex__' of 'object' objects}
+  3383985    0.359    0.000    0.359    0.000 {method 'append' of 'list' objects}
+  3001603    0.354    0.000    0.354    0.000 {method 'bit_length' of 'int' objects}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+  1978818    0.238    0.000    0.238    0.000 {method 'extend' of 'list' objects}
+  2173116    0.251    0.000    0.251    0.000 {method 'get' of 'dict' objects}
+        1    0.000    0.000    0.000    0.000 {method 'get' of 'mappingproxy' objects}
+    44348    0.009    0.000    0.009    0.000 {method 'items' of 'dict' objects}
+       64    0.000    0.000    0.000    0.000 {method 'keys' of 'dict' objects}
+    44348    0.025    0.000    0.025    0.000 {method 'update' of 'dict' objects}
+
+
+(base) ekong@Edwards-MacBook-Pro Dex % 
+
+(base) ekong@Edwards-MacBook-Pro Dex %  cd /Users/ekong/Documents/Documents/Work/Projects/lichess/lichess-bot/engines/Dex ; /usr/bin/env /usr/bin/python3 /Users/ekong/.vscode/extensions/ms-python.python-2023.20.0/pythonFiles/lib/python/debugpy
+/adapter/../../debugpy/launcher 49216 -- /Users/ekong/Documents/Documents/Work/Projects/lichess/lichess-bot/engines/Dex/src/GameState.py 
+(base) ekong@Edwards-MacBook-Pro Dex %  cd /Users/ekong/Documents/Documents/Work/Projects/lichess/lichess-bot/engines/Dex ; /usr/bin/env /usr/bin/python3 /Users/ekong/.vscode/extensions/ms-python.python-2023.20.0/pythonFiles/lib/python/debugpy
+/adapter/../../debugpy/launcher 49226 -- /Users/ekong/Documents/Documents/Work/Projects/lichess/lichess-bot/engines/Dex/src/GameState.py 
+----------------------------------
+r n b q k b n r 
+p p p p p p p p 
+- - - - - - - - 
+- - - - - - - - 
+- - - - - - - - 
+- - - - - - - - 
+P P P P P P P P 
+R N B Q K B N R 
+----------------------------------
+'Move: ' 1
+White to play
+Your turn: e2e4
+----------------------------------
+r n b q k b n r 
+p p p p p p p p 
+- - - - - - - - 
+- - - - - - - - 
+- - - - P - - - 
+- - - - - - - - 
+P P P P - P P P 
+R N B Q K B N R 
+----------------------------------
+'Move: ' 2
+Black to play
+Search depth: 3
+1183.3539009094238
+eval: -35 bestmove: g8f6
+         1130247 function calls (1089207 primitive calls) in 4.063 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    4.063    4.063 <string>:1(<module>)
+        1    0.000    0.000    1.183    1.183 GameState.py:28(search)
+        1    0.001    0.001    4.063    4.063 GameState.py:48(manualNewGame)
+     1710    0.009    0.000    0.235    0.000 board.py:231(simulate_move)
+     1712    0.007    0.000    0.017    0.000 board.py:241(refresh_occupant_bitboards)
+        2    0.000    0.000    0.000    0.000 board.py:45(make_move)
+     1712    0.009    0.000    0.009    0.000 board.py:54(update_board)
+41040/1710    0.099    0.000    0.199    0.000 copy.py:128(deepcopy)
+    34200    0.004    0.000    0.004    0.000 copy.py:182(_deepcopy_atomic)
+     3420    0.036    0.000    0.098    0.000 copy.py:200(_deepcopy_list)
+     1710    0.015    0.000    0.147    0.000 copy.py:226(_deepcopy_dict)
+     6840    0.006    0.000    0.007    0.000 copy.py:242(_keep_alive)
+     1710    0.015    0.000    0.181    0.000 copy.py:258(_reconstruct)
+     3420    0.003    0.000    0.008    0.000 copy.py:263(<genexpr>)
+        1    0.000    0.000    0.000    0.000 copyreg.py:103(_slotnames)
+     1710    0.001    0.000    0.002    0.000 copyreg.py:94(__newobj__)
+     1560    0.093    0.000    0.114    0.000 evaluate.py:78(evaluate_board)
+    23673    0.108    0.000    0.255    0.000 movegenerator.py:100(generate_piece_moves)
+     1711    0.008    0.000    0.082    0.000 movegenerator.py:12(__init__)
+     1711    0.066    0.000    0.073    0.000 movegenerator.py:135(calculate_attacks_on_king)
+    12620    0.024    0.000    0.027    0.000 movegenerator.py:225(generate_pawn_push)
+    12620    0.030    0.000    0.055    0.000 movegenerator.py:247(generate_pawn_captures)
+     1711    0.080    0.000    0.607    0.000 movegenerator.py:26(generate_moves)
+     3158    0.010    0.000    0.023    0.000 movegenerator.py:296(generate_knight_moves)
+     7895    0.036    0.000    0.037    0.000 movegenerator.py:310(generate_sliding_moves)
+     1711    0.017    0.000    0.257    0.000 movegenerator.py:51(generate_king_moves)
+    32552    0.050    0.000    0.050    0.000 moveorder.py:2(capture_priority)
+    10898    0.008    0.000    0.010    0.000 scope.py:164(is_in_knight_scope)
+     5449    0.144    0.000    0.230    0.000 scope.py:171(is_square_attacked)
+    16341    0.013    0.000    0.019    0.000 scope.py:201(is_in_bishop_scope)
+    16338    0.010    0.000    0.013    0.000 scope.py:223(is_in_rook_scope)
+     5446    0.013    0.000    0.024    0.000 scope.py:252(is_in_queen_scope)
+     5446    0.004    0.000    0.006    0.000 scope.py:255(is_in_king_scope)
+     1427    0.009    0.000    0.240    0.000 scope.py:262(can_castle)
+    12620    0.020    0.000    0.025    0.000 scope.py:68(generate_pawn_scope)
+     9462    0.003    0.000    0.003    0.000 scope.py:80(<listcomp>)
+     3732    0.014    0.000    0.015    0.000 scope.py:84(generate_knight_scope)
+   1711/1    0.020    0.000    1.183    1.183 search.py:3(minimax_alpha_beta)
+    32552    0.039    0.000    0.089    0.000 search.py:8(<lambda>)
+        1    0.000    0.000    0.000    0.000 tools.py:101(uci_to_int)
+        1    0.000    0.000    0.000    0.000 tools.py:133(int_to_uci)
+   136357    0.052    0.000    0.064    0.000 tools.py:2(bitscan_lsb)
+       64    0.000    0.000    0.000    0.000 tools.py:35(int_to_char_piece)
+     5136    0.010    0.000    0.010    0.000 tools.py:53(combine_bitboard)
+      256    0.001    0.000    0.001    0.000 tools.py:6(bitscan_msb)
+        2    0.000    0.000    0.000    0.000 tools.py:87(print_board)
+     1710    0.000    0.000    0.000    0.000 {built-in method __new__ of type object at 0x10ae4ba38}
+    77643    0.006    0.000    0.006    0.000 {built-in method builtins.abs}
+        2    0.000    0.000    0.000    0.000 {built-in method builtins.chr}
+   100497    0.010    0.000    0.010    0.000 {built-in method builtins.divmod}
+        1    0.000    0.000    4.063    4.063 {built-in method builtins.exec}
+     3420    0.001    0.000    0.001    0.000 {built-in method builtins.getattr}
+     1711    0.000    0.000    0.000    0.000 {built-in method builtins.hasattr}
+    56430    0.006    0.000    0.006    0.000 {built-in method builtins.id}
+        2    2.878    1.439    2.878    1.439 {built-in method builtins.input}
+     3420    0.001    0.000    0.001    0.000 {built-in method builtins.isinstance}
+     1710    0.000    0.000    0.000    0.000 {built-in method builtins.issubclass}
+      129    0.000    0.000    0.000    0.000 {built-in method builtins.max}
+     1581    0.001    0.000    0.001    0.000 {built-in method builtins.min}
+        6    0.000    0.000    0.000    0.000 {built-in method builtins.ord}
+      154    0.001    0.000    0.001    0.000 {built-in method builtins.print}
+     1711    0.035    0.000    0.124    0.000 {built-in method builtins.sorted}
+        2    0.000    0.000    0.000    0.000 {built-in method time.time}
+     1710    0.002    0.000    0.002    0.000 {method '__reduce_ex__' of 'object' objects}
+   120221    0.010    0.000    0.010    0.000 {method 'append' of 'list' objects}
+   136357    0.012    0.000    0.012    0.000 {method 'bit_length' of 'int' objects}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+    71139    0.006    0.000    0.006    0.000 {method 'extend' of 'list' objects}
+    83854    0.007    0.000    0.007    0.000 {method 'get' of 'dict' objects}
+        1    0.000    0.000    0.000    0.000 {method 'get' of 'mappingproxy' objects}
+     1710    0.000    0.000    0.000    0.000 {method 'items' of 'dict' objects}
+       64    0.000    0.000    0.000    0.000 {method 'keys' of 'dict' objects}
+     1710    0.001    0.000    0.001    0.000 {method 'update' of 'dict' objects}
+
+
+2023-11-30 02:44:28
+(base) ekong@Edwards-MacBook-Pro Dex %  cd /Users/ekong/Documents/Documents/Work/Projects/lichess/lichess-bot/engines/Dex ; /usr/bin/env /usr/bin/python3 /Users/ekong/.vscode/extensions/ms-python.python-2023.20.0/pythonFiles/lib/python/debugpy
+/adapter/../../debugpy/launcher 49233 -- /Users/ekong/Documents/Documents/Work/Projects/lichess/lichess-bot/engines/Dex/src/GameState.py 
+----------------------------------
+r n b q k b n r 
+p p p p p p p p 
+- - - - - - - - 
+- - - - - - - - 
+- - - - - - - - 
+- - - - - - - - 
+P P P P P P P P 
+R N B Q K B N R 
+----------------------------------
+'Move: ' 1
+White to play
+Your turn: e2e4
+----------------------------------
+r n b q k b n r 
+p p p p p p p p 
+- - - - - - - - 
+- - - - - - - - 
+- - - - P - - - 
+- - - - - - - - 
+P P P P - P P P 
+R N B Q K B N R 
+----------------------------------
+'Move: ' 2
+Black to play
+Search depth: 4
+3513.421058654785
+eval: 19915 bestmove: d7d5
+         3289984 function calls (3163480 primitive calls) in 5.105 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    5.105    5.105 <string>:1(<module>)
+        1    0.000    0.000    3.513    3.513 GameState.py:28(search)
+        1    0.001    0.001    5.105    5.105 GameState.py:48(manualNewGame)
+     5271    0.027    0.000    0.690    0.000 board.py:231(simulate_move)
+     5273    0.022    0.000    0.052    0.000 board.py:241(refresh_occupant_bitboards)
+        2    0.000    0.000    0.000    0.000 board.py:45(make_move)
+     5273    0.028    0.000    0.029    0.000 board.py:54(update_board)
+126504/5271    0.288    0.000    0.582    0.000 copy.py:128(deepcopy)
+   105420    0.011    0.000    0.011    0.000 copy.py:182(_deepcopy_atomic)
+    10542    0.106    0.000    0.289    0.000 copy.py:200(_deepcopy_list)
+     5271    0.043    0.000    0.431    0.000 copy.py:226(_deepcopy_dict)
+    21084    0.017    0.000    0.021    0.000 copy.py:242(_keep_alive)
+     5271    0.042    0.000    0.529    0.000 copy.py:258(_reconstruct)
+    10542    0.009    0.000    0.024    0.000 copy.py:263(<genexpr>)
+        1    0.000    0.000    0.000    0.000 copyreg.py:103(_slotnames)
+     5271    0.003    0.000    0.005    0.000 copyreg.py:94(__newobj__)
+     4083    0.231    0.000    0.288    0.000 evaluate.py:78(evaluate_board)
+    78411    0.360    0.000    0.834    0.000 movegenerator.py:100(generate_piece_moves)
+     5272    0.022    0.000    0.235    0.000 movegenerator.py:12(__init__)
+     5272    0.190    0.000    0.209    0.000 movegenerator.py:135(calculate_attacks_on_king)
+    41815    0.076    0.000    0.086    0.000 movegenerator.py:225(generate_pawn_push)
+    41815    0.098    0.000    0.180    0.000 movegenerator.py:247(generate_pawn_captures)
+     5272    0.256    0.000    1.734    0.000 movegenerator.py:26(generate_moves)
+    10456    0.033    0.000    0.077    0.000 movegenerator.py:296(generate_knight_moves)
+    26140    0.108    0.000    0.112    0.000 movegenerator.py:310(generate_sliding_moves)
+     5272    0.046    0.000    0.595    0.000 movegenerator.py:51(generate_king_moves)
+   126712    0.237    0.000    0.237    0.000 moveorder.py:2(capture_priority)
+    23478    0.018    0.000    0.021    0.000 scope.py:164(is_in_knight_scope)
+    11739    0.310    0.000    0.525    0.000 scope.py:171(is_square_attacked)
+    35207    0.028    0.000    0.041    0.000 scope.py:201(is_in_bishop_scope)
+    35202    0.020    0.000    0.027    0.000 scope.py:223(is_in_rook_scope)
+    11734    0.027    0.000    0.049    0.000 scope.py:252(is_in_queen_scope)
+    13350    0.010    0.000    0.014    0.000 scope.py:255(is_in_king_scope)
+     4924    0.023    0.000    0.548    0.000 scope.py:262(can_castle)
+    41842    0.068    0.000    0.082    0.000 scope.py:68(generate_pawn_scope)
+    31386    0.011    0.000    0.011    0.000 scope.py:80(<listcomp>)
+    11599    0.044    0.000    0.048    0.000 scope.py:84(generate_knight_scope)
+   5272/1    0.057    0.000    3.513    3.513 search.py:3(minimax_alpha_beta)
+   126712    0.142    0.000    0.380    0.000 search.py:8(<lambda>)
+        1    0.000    0.000    0.000    0.000 tools.py:101(uci_to_int)
+        1    0.000    0.000    0.000    0.000 tools.py:133(int_to_uci)
+   347259    0.133    0.000    0.163    0.000 tools.py:2(bitscan_lsb)
+       64    0.000    0.000    0.000    0.000 tools.py:35(int_to_char_piece)
+    15819    0.030    0.000    0.030    0.000 tools.py:53(combine_bitboard)
+     7952    0.033    0.000    0.033    0.000 tools.py:6(bitscan_msb)
+        2    0.000    0.000    0.001    0.000 tools.py:87(print_board)
+     5271    0.001    0.000    0.001    0.000 {built-in method __new__ of type object at 0x10da4ba38}
+   185153    0.014    0.000    0.014    0.000 {built-in method builtins.abs}
+        2    0.000    0.000    0.000    0.000 {built-in method builtins.chr}
+   247072    0.025    0.000    0.025    0.000 {built-in method builtins.divmod}
+        1    0.000    0.000    5.105    5.105 {built-in method builtins.exec}
+    10542    0.002    0.000    0.002    0.000 {built-in method builtins.getattr}
+     5272    0.001    0.000    0.001    0.000 {built-in method builtins.hasattr}
+   173943    0.016    0.000    0.016    0.000 {built-in method builtins.id}
+        2    1.589    0.795    1.589    0.795 {built-in method builtins.input}
+    10542    0.002    0.000    0.002    0.000 {built-in method builtins.isinstance}
+     5271    0.001    0.000    0.001    0.000 {built-in method builtins.issubclass}
+     4165    0.002    0.000    0.002    0.000 {built-in method builtins.max}
+     1106    0.000    0.000    0.000    0.000 {built-in method builtins.min}
+        6    0.000    0.000    0.000    0.000 {built-in method builtins.ord}
+      154    0.001    0.000    0.001    0.000 {built-in method builtins.print}
+     5272    0.128    0.000    0.508    0.000 {built-in method builtins.sorted}
+        2    0.000    0.000    0.000    0.000 {built-in method time.time}
+     5271    0.005    0.000    0.005    0.000 {method '__reduce_ex__' of 'object' objects}
+   399641    0.031    0.000    0.031    0.000 {method 'append' of 'list' objects}
+   347259    0.030    0.000    0.030    0.000 {method 'bit_length' of 'int' objects}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+   235295    0.021    0.000    0.021    0.000 {method 'extend' of 'list' objects}
+   258343    0.022    0.000    0.022    0.000 {method 'get' of 'dict' objects}
+        1    0.000    0.000    0.000    0.000 {method 'get' of 'mappingproxy' objects}
+     5271    0.001    0.000    0.001    0.000 {method 'items' of 'dict' objects}
+       64    0.000    0.000    0.000    0.000 {method 'keys' of 'dict' objects}
+     5271    0.002    0.000    0.002    0.000 {method 'update' of 'dict' objects}
+
+
+2023-11-30 02:45:20
+(base) ekong@Edwards-MacBook-Pro Dex % 

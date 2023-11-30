@@ -11,15 +11,18 @@ def capture_priority(board, move, color):
             break
     
     if board.occupants[color] & (1 << to_square):
-        if board.bitboards[color * 6] & (1 << to_square):
+        if board.bitboards[(1 - color) * 6] & (1 << to_square):
             return 10 + piece_type
-        if board.bitboards[1 + color * 6] & (1 << to_square):
+        if board.bitboards[1 + (1 - color) * 6] & (1 << to_square):
             return 20 + piece_type
-        if board.bitboards[2 + color * 6] & (1 << to_square):
+        if board.bitboards[2 + (1 - color) * 6] & (1 << to_square):
             return 30 + piece_type
-        if board.bitboards[3 + color * 6] & (1 << to_square):
+        if board.bitboards[3 + (1 - color) * 6] & (1 << to_square):
             return 40 + piece_type
-        if board.bitboards[4 + color * 6] & (1 << to_square):
+        if board.bitboards[4 + (1 - color) * 6] & (1 << to_square):
             return 50 + piece_type
+        else:
+            return 0
+
     else:
         return 0
