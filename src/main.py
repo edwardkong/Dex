@@ -25,10 +25,11 @@ class UCI:
                 if parsed_command[1] == "startpos":
                     ng = gamestate.GameState()
                     ng.newGameUCI()
-                    if parsed_command[2] == "moves":
-                        for move in parsed_command[3:]:
-                            given_move = tools.uci_to_int(move, ng.board.bitboards)
-                            ng.make_move(given_move)
+                    if len(parsed_command) > 2:
+                        if parsed_command[2] == "moves":
+                            for move in parsed_command[3:]:
+                                given_move = tools.uci_to_int(move, ng.board.bitboards)
+                                ng.make_move(given_move)
 
             elif parsed_command[0] == "go":
                 if parsed_command[1] == "movetime":

@@ -123,7 +123,7 @@ def generate_sliding_scope(occupants, from_square, color, piece_type):
             directions = sliding_moves
 
         for d in directions:
-            new_rank, new_file = rank + move[0], file + move[1]
+            new_rank, new_file = rank + d[0], file + d[1]
             while 0 <= new_rank < 8 and 0 <= new_file < 8:
                 new_square = 8 * new_rank + new_file
                 # Square occupied
@@ -131,7 +131,7 @@ def generate_sliding_scope(occupants, from_square, color, piece_type):
                     candidate.append(new_square)
                 else:
                     candidate.append(new_square)
-                    rank, file = new_rank + move[0], new_file + move[1]
+                    rank, file = new_rank + d[0], new_file + d[1]
         return candidate
 
 def generate_king_scope(from_square):

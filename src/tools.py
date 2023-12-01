@@ -225,4 +225,5 @@ p - - b p p p p
 P P P - P P P P 
 R N - - K B - R 
 
+print_bitboard(2260630400663552)
 """
