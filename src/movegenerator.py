@@ -105,8 +105,8 @@ class MoveGenerator:
         #print(f"candidate: {candidate}")
         for to_square in candidate:
             if type(to_square) == str:
-                piece_type = tools.char_to_int_piece(to_square[2])
-                to_square = int(to_square[:2])
+                piece_type = tools.char_to_int_piece(to_square[-1])
+                to_square = int(to_square[:-1])
             #print(to_square)
             # Piece is pinned and destination is outside of the pin or
             # King is in check and piece destination is not in check_ray (blocking)
@@ -260,7 +260,15 @@ class MoveGenerator:
     def generate_pawn_ep(self, from_square, color):
         """
         Returns psuedo legal pawn en passant
-        ! Not yet implemented !
+        Need to modify search function to take in gamestate as argument or make search a class function of gamestate instead
+        Retrieves the last move from the move history and checks if it was a double pawn push.
+        If it was a double pawn push, check if there is a pawn that can capture en passant. (rank 3 for white, 4 for black (middle ranks))
+        Check all check rules:
+            Does taking en passant put the king in check?
+            If the pawn is the pinned piece.
+            If the pawn is xray pinned (horizontal ray)
+        """
+
         
         en_passant_legal = False
         try:

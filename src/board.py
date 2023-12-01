@@ -179,7 +179,7 @@ class Board:
                         self.bitboards[9] &= ~(1 << rook_from_square)  # Clear the rook from the source square
                         self.bitboards[9] |= (1 << rook_to_square)  # Set the rook on the destination square
                     self.castling_rights &= 0b1100 # Set black's castling rights to 00
-                    
+
                 self.bitboards[piece_type + color * 6] &= ~(1 << from_square)  # Clear piece from source square                
                 self.bitboards[piece_type + color * 6] |= (1 << to_square) # Set the destination square in the bitboard
                 return self.bitboards
@@ -187,8 +187,8 @@ class Board:
                 self.bitboards[piece_type + color * 6] &= ~(1 << from_square)  # Clear piece from source square
                 self.bitboards[piece_type + color * 6] |= (1 << to_square) # Set the destination square in the bitboard
 
-                if color: self.castling_rights &= 0b1100
-                else: self.castling_rights &= 0b11
+                if color: self.castling_rights &= 0b11
+                else: self.castling_rights &= 0b1100
 
             
 

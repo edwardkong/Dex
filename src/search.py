@@ -1,4 +1,4 @@
-import evaluate, tools, moveorder, gamestate, movegenerator
+import evaluate, tools, moveorder, movegenerator
 
 def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
     mg = movegenerator.MoveGenerator(board, color)

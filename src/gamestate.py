@@ -5,7 +5,7 @@ import tools, search, evaluate, moveorder
 import random, time, datetime
 import cProfile
 
-class GameState:
+class gamestate:
     def __init__(self, board: Board=None):
         if board is None:
             self.board = Board()
