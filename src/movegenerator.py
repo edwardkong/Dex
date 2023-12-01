@@ -104,15 +104,16 @@ class MoveGenerator:
             candidate.extend(self.generate_sliding_moves(from_square, piece_type))
         #print(f"candidate: {candidate}")
         for to_square in candidate:
+            if type(to_square) == str:
+                piece_type = tools.char_to_int_piece(to_square[2])
+                to_square = int(to_square[:2])
             #print(to_square)
             # Piece is pinned and destination is outside of the pin or
             # King is in check and piece destination is not in check_ray (blocking)
             if (self.pinned_ray_mask & (1 << from_square) and not self.pinned_ray_mask & (1 << to_square)) or \
                 (self.in_check and not self.check_ray_mask & (1 << to_square)):
                     continue
-            if type(to_square) == str:
-                piece_type = tools.char_to_int_piece(to_square[2])
-                to_square = int(to_square[:2])
+            
             move = from_square | (to_square << 6) | (piece_type << 12) | (color << 15)
             legal_moves.append(move)
         
@@ -169,7 +170,7 @@ class MoveGenerator:
                             xray_file = king_file - d[1]
                             xray_square = 8 * xray_rank + xray_file
                             if 0 <= xray_rank < 8 and 0 <= xray_file < 8:
-                                if not self.board.occupants[2] & (1 << xray_square):
+                                if not self.board.occupants[color] & (1 << xray_square):
                                     self.attacked_ray_mask |= (1 << xray_square)
                     # Opponent piece does not have sight
                     else:
