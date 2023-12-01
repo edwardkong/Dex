@@ -149,7 +149,7 @@ class MoveGenerator:
 
             while 0 <= new_rank < 8 and 0 <= new_file < 8:
                 new_square = 8 * new_rank + new_file
-                ray_mask |= new_square
+                ray_mask |= (1 << new_square)
 
                 # Friendly piece occupied
                 if occupants[color] & (1 << new_square):
