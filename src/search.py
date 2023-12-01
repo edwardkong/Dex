@@ -7,14 +7,14 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
 
     ordered_moves = sorted(legal_moves, key=lambda move: moveorder.capture_priority(board, move, color))
 
-    for m in legal_moves: 
+    #for m in legal_moves: 
         #print("========")
         #print(tools.int_to_uci(m))
-        #print(depth)
+    #print(depth)
         #print(color)
-        if tools.int_to_uci(m) == "e8d7":
-            print(mg.check_jump_mask)
-            print(mg.check_ray_mask)
+    #    if tools.int_to_uci(m) == "e8d7":
+    #        print(mg.check_jump_mask)
+    #        print(mg.check_ray_mask)
     #print(legal_moves)
     #quit()
 
@@ -27,13 +27,33 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
         else:
             return 0.0, None
     
+    
     if depth == 0:
         return evaluate_func(board), None
-    
+
     if color == 0: # maximizing player
         max_eval = float('-inf')
         best_move = None
         for move in ordered_moves:
+            
+            if depth == 1:
+                if tools.int_to_uci(move) == "c6c8":
+                    print(f"\t\t\t {depth} {color}")
+                    print(f"\t\t\t{tools.int_to_uci(move)}")
+            elif depth == 2:
+                if tools.int_to_uci(move) == "e8c8":
+                    print(f"\t\t{depth} {color}")
+                    print(f"\t\t{tools.int_to_uci(move)}")
+                    print("\t\t|_______\n")
+            elif depth == 3: 
+                print(f"\t{depth} {color}")
+                print(f"\t{tools.int_to_uci(move)}")
+                print("\t|_______\n")
+            else: 
+                print(f"{depth} {color}")
+                print(f"{tools.int_to_uci(move)}")
+                print("|_______\n")
+            
             eval_score, _ = minimax_alpha_beta(board.simulate_move(move), depth - 1, alpha, beta, 1, evaluate_func)
             #print(f"depth {depth} inside max")
             #print(depth, eval_score, tools.int_to_uci(move) if move else "none")
@@ -49,6 +69,24 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
         min_eval = float('inf')
         best_move = None
         for move in ordered_moves:
+            if depth == 1:
+                if tools.int_to_uci(move) == "c6c8":
+                    print(f"\t\t\t {depth} {color}")
+                    print(f"\t\t\t{tools.int_to_uci(move)}")
+            elif depth == 2:
+                if tools.int_to_uci(move) == "e8c8":
+                    print(f"\t\t{depth} {color}")
+                    print(f"\t\t{tools.int_to_uci(move)}")
+                    print("\t\t|_______\n")
+            elif depth == 3: 
+                print(f"\t{depth} {color}")
+                print(f"\t{tools.int_to_uci(move)}")
+                print("\t|_______\n")
+            else: 
+                print(f"{depth} {color}")
+                print(f"{tools.int_to_uci(move)}")
+                print("|_______\n")
+
             eval_score, _ = minimax_alpha_beta(board.simulate_move(move), depth - 1, alpha, beta, 0, evaluate_func)
             #print(f"depth {depth} inside min")
             #print(depth, eval_score, tools.int_to_uci(move) if move else "none")

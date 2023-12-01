@@ -50,14 +50,14 @@ def int_to_char_piece(piece):
     if piece in map.keys():
         return map.get(piece)
 
-def combine_bitboard(bitboards: list, color = None):
+def combine_bitboard(board, color=None):
     result_bitboard = 0
     if color is None:
         for piece in range(12):
-            result_bitboard |= bitboards[piece]
+            result_bitboard |= board.bitboards[piece]
     else:
         for piece in range(6):
-            result_bitboard |= bitboards[piece + color*6]
+            result_bitboard |= board.bitboards[piece + color*6]
 
     return result_bitboard
 
@@ -94,7 +94,7 @@ def print_board(board) -> list:
             pieces &= pieces - 1
     return text_board
 
-def print_bitboard(bitboards) -> list:
+def print_bitboards(bitboards) -> list:
     text_board = ["-"] * 64  # 8x8
     for piece in range(12):
         pieces = bitboards[piece]
@@ -110,6 +110,13 @@ def print_bitboard(bitboards) -> list:
     
     return text_board
 
+def print_bitboard(bb_int):
+    i = 56
+    bits = bin(bb_int)
+    bits = '0' * (66 - len(bits)) + bits[2:]
+    for x in range(8):
+        print(bits[i:i+7])
+        i -= 8
 
 # Standard UCI move notation includes 4 characters, source square and destination square. 
 # Castling is specified by king position (i.e. e1g1).
@@ -165,5 +172,57 @@ def int_to_uci(move):
 #print(parse_move(35124))
 #bb = [65280, 66, 36, 129, 8, 16, 67272588153323520, 4755801206503243776, 2594073385365405696, 9295429630892703744, 576460752303423488, 1152921504606846976]
 #print_bitboard(bb)
+#[56442, 56954, 52411]
+#    print(int_to_uci(i))
 
-#print(int_to_uci(21188))
+
+"""
+9295429630892703744 rooks
+
+18141944539063
+17142674973375070208
+17142693115319609271
+
+11101101
+11100111
+00010100
+10010000
+00000000
+00101000
+11100111
+10110111
+
+ray = 1155177711056977920
+jump = 87960930222080
+
+print_bitboard(ray)
+print()
+
+print_bitboard(jump)
+
+print(bin(ray))
+
+00010000
+00001000
+00000100
+00000010
+00000000
+00000000
+00000000
+00000000
+
+
+bb = [63232, 2097154, 536870944, 129, 288230376151711744, 16, 67844282660159488, 4611686018427387904, 2308094809027379200, 9799832789158199296, 576460752303423488, 0]
+
+print_bitboards(bb)
+
+- - Q q - b n r 
+p - - b p p p p 
+- - - p - - - - 
+- - p - - - - - 
+- - - - - B - - 
+- - - - - N - - 
+P P P - P P P P 
+R N - - K B - R 
+
+"""

@@ -25,7 +25,6 @@ class MoveGenerator:
     def generate_moves(self):
         """Returns all moves for all pieces in position for a color."""
         self.moves.extend(self.generate_king_moves())
-    
         # Only the king can move in double check
         if self.double_check:
             return self.moves
@@ -37,6 +36,14 @@ class MoveGenerator:
                     # Find the index of the least significant set bit (LSB)
                     from_square = tools.bitscan_lsb(pieces)
                     
+
+                    #test = self.generate_piece_moves(piece_type, from_square)
+                    #print(from_square)
+                    #print(piece_type)
+                    #print(test)
+                    
+                    #self.moves.extend(test)
+
                     # Generate moves for the current piece
                     self.moves.extend(self.generate_piece_moves(piece_type, from_square))
 
@@ -103,7 +110,9 @@ class MoveGenerator:
         candidate = []
         legal_moves = []
         color = self.color
-        
+        #print(f"piece_type: {piece_type}")
+        #print(f"from_square: {from_square}")
+
         if piece_type == 0:
             candidate.extend(self.generate_pawn_push(from_square))
             candidate.extend(self.generate_pawn_captures(from_square))
@@ -111,13 +120,18 @@ class MoveGenerator:
             candidate.extend(self.generate_knight_moves(from_square))
         elif piece_type in (2, 3, 4):
             candidate.extend(self.generate_sliding_moves(from_square, piece_type))
-        
+        #print(f"candidate: {candidate}")
         for to_square in candidate:
+            #print(to_square)
             # Piece is pinned and destination is outside of the pin or
             # King is in check and piece destination is not in check_ray (blocking)
             if (self.pinned_ray_mask & (1 << from_square) and not self.pinned_ray_mask & (1 << to_square)) or \
                 (self.in_check and not self.check_ray_mask & (1 << to_square)):
+                    #print("continue")
                     continue
+            if to_square == 60 and self.board.bitboards[11] & (1 << 60):
+                print('what are we doing here')
+            
             move = from_square | (to_square << 6) | (piece_type << 12) | (color << 15)
             legal_moves.append(move)
         
@@ -134,15 +148,13 @@ class MoveGenerator:
         king_rank = king_square // 8
         king_file = king_square % 8
 
-        ray_mask = 0
-
         # Search for sliding piece attack rays in all directions
         
         start = 0 if bitboards[2 + color * 6] or bitboards[4 + color * 6] else 4
         end = 8 if bitboards[3 + color * 6] or bitboards[4 + color * 6] else 4
 
         for d in DIRECTIONS[start:end]:
-            ray_mask = 0
+            ray_mask = (1 << king_square)
             diag = abs(d[0]) == abs(d[1])
             new_rank, new_file = king_rank + d[0], king_file + d[1]
             friendly_piece_encountered = 0
@@ -192,7 +204,7 @@ class MoveGenerator:
                 knights &= knights - 1
                 continue
             for move in scope.generate_knight_scope(knight_square):
-                self.check_jump_mask |= move
+                self.check_jump_mask |= (1 << move)
                 if king_square & (1 << move):
                     self.double_check = self.in_check
                     self.in_check = True
@@ -208,7 +220,7 @@ class MoveGenerator:
                 pawns &= pawns - 1
                 continue
             for move in scope.generate_pawn_scope(pawn_square, color):
-                self.check_jump_mask |= move
+                self.check_jump_mask |= (1 << move)
                 if king_square & (1 << move):
                     self.double_check = self.in_check
                     self.in_check = True
@@ -314,10 +326,8 @@ class MoveGenerator:
                 # Square occupied
                 if self.board.occupants[self.color] & (1 << new_square):
                     break
+                candidate.append(new_square)
                 if self.board.occupants[1 - self.color] & (1 << new_square):
-                    candidate.append(new_square)
-                    break                    
-                else:
                     break
                 new_rank += d[0] 
                 new_file += d[1]

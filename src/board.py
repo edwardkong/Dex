@@ -39,9 +39,9 @@ class Board:
     def initialize_occupants(self):
         self.occupants = [0] * 3
 
-        self.occupants[0] = tools.combine_bitboard(self.bitboards, 0)
-        self.occupants[1] = tools.combine_bitboard(self.bitboards, 1)
-        self.occupants[2] = tools.combine_bitboard(self.bitboards)
+        self.occupants[0] = tools.combine_bitboard(self, 0)
+        self.occupants[1] = tools.combine_bitboard(self, 1)
+        self.occupants[2] = tools.combine_bitboard(self)
 
     def initialize_castling(self):
         self.castling_rights = 0b1111
@@ -140,9 +140,7 @@ class Board:
 
             # Normal move
             else:
-                self.bitboards[0 + color * 6] &= ~(
-                    1 << from_square
-                )  # Clear pawn from source square
+                self.bitboards[0 + color * 6] &= ~(1 << from_square)  # Clear pawn from source square
 
             # Set the destination square in the bitboard
             self.bitboards[piece_type + color * 6] |= 1 << to_square
@@ -158,69 +156,51 @@ class Board:
                         # White king-side castling
                         rook_from_square = 7
                         rook_to_square = 5
-                        self.bitboards[3 + color * 6] &= ~(
-                            1 << rook_from_square
-                        )  # Clear the rook from the source square
-                        self.bitboards[3 + color * 6] |= (
-                            1 << rook_to_square
-                        )  # Set the rook on the destination square
+                        self.bitboards[3] &= ~(1 << rook_from_square)  # Clear the rook from the source square
+                        self.bitboards[3] |= (1 << rook_to_square)  # Set the rook on the destination square
                     elif to_square == 2:
                         # White queen-side castling
                         rook_from_square = 0
                         rook_to_square = 3
-                        self.bitboards[3 + color * 6] &= ~(
-                            1 << rook_from_square
-                        )  # Clear the rook from the source square
-                        self.bitboards[3 + color * 6] |= (
-                            1 << rook_to_square
-                        )  # Set the rook on the destination square
-                    self.castling_rights &= 0b11
+                        self.bitboards[3] &= ~(1 << rook_from_square)  # Clear the rook from the source square
+                        self.bitboards[3] |= (1 << rook_to_square)  # Set the rook on the destination square
+                    self.castling_rights &= 0b11 # Set white's castling rights to 00
                 else:  # Black
                     if to_square == 58:
                         # Black queen-side castling
                         rook_from_square = 56
                         rook_to_square = 59
-                        self.bitboards[3 + color * 6] &= ~(
-                            1 << rook_from_square
-                        )  # Clear the rook from the source square
-                        self.bitboards[3 + color * 6] |= (
-                            1 << rook_to_square
-                        )  # Set the rook on the destination square
+                        self.bitboards[9] &= ~(1 << rook_from_square)  # Clear the rook from the source square
+                        self.bitboards[9] |= (1 << rook_to_square)  # Set the rook on the destination square
                     elif to_square == 62:
                         # Black king-side castling
                         rook_from_square = 63
                         rook_to_square = 61
-                        self.bitboards[3 + color * 6] &= ~(
-                            1 << rook_from_square
-                        )  # Clear the rook from the source square
-                        self.bitboards[3 + color * 6] |= (
-                            1 << rook_to_square
-                        )  # Set the rook on the destination square
-                    self.castling_rights &= 0b1100
+                        self.bitboards[9] &= ~(1 << rook_from_square)  # Clear the rook from the source square
+                        self.bitboards[9] |= (1 << rook_to_square)  # Set the rook on the destination square
+                    self.castling_rights &= 0b1100 # Set black's castling rights to 00
+                    
+                self.bitboards[piece_type + color * 6] &= ~(1 << from_square)  # Clear piece from source square                
+                self.bitboards[piece_type + color * 6] |= (1 << to_square) # Set the destination square in the bitboard
+                return self.bitboards
+            else:
+                self.bitboards[piece_type + color * 6] &= ~(1 << from_square)  # Clear piece from source square
+                self.bitboards[piece_type + color * 6] |= (1 << to_square) # Set the destination square in the bitboard
 
-                self.bitboards[piece_type + color * 6] &= ~(
-                    1 << from_square
-                )  # Clear piece from source square
-                # Set the destination square in the bitboard
-                self.bitboards[piece_type + color * 6] |= 1 << to_square
                 if color: self.castling_rights &= 0b1100
                 else: self.castling_rights &= 0b11
 
-                return self.bitboards
+            
 
         # Check if it's a capture
         if piece_type in (1, 2, 3, 4, 5):
             if self.occupants[1 - color] & (1 << to_square):
                 for captured_piece in range(6):
                     if self.bitboards[captured_piece + (1 - color) * 6] & (1 << to_square):
-                        self.bitboards[captured_piece + (1 - color) * 6] &= ~(
-                            1 << to_square
-                        )  # Clear captured piece on destination square
+                        self.bitboards[captured_piece + (1 - color) * 6] &= ~(1 << to_square)  # Clear captured piece on destination square
                         break
-            self.bitboards[piece_type + color * 6] &= ~(
-                1 << from_square
-            )  # Clear piece from source square
-            self.bitboards[piece_type + color * 6] |= 1 << to_square
+            self.bitboards[piece_type + color * 6] &= ~(1 << from_square)  # Clear piece from source square
+            self.bitboards[piece_type + color * 6] |= (1 << to_square)
             return self.bitboards
 
         return self.bitboards
@@ -228,7 +208,7 @@ class Board:
     def simulate_move(self, move):
         """Simulate a move without updating the board"""
         board_copy = self.copy_board()
-        #print(f"sim {move} {self.bitboards}")
+
         #board_copy.update_attack_map(move)
         #board_copy.update_consolidated_attack_maps()
         board_copy.update_board(move)
@@ -239,9 +219,9 @@ class Board:
     def refresh_occupant_bitboards(self):
         """Returns occupants[] as bitboards representing white, black, and combined pieces."""
 
-        self.occupants[0] = tools.combine_bitboard(self.bitboards, 0)
-        self.occupants[1] = tools.combine_bitboard(self.bitboards, 1)
-        self.occupants[2] = tools.combine_bitboard(self.bitboards)
+        self.occupants[0] = tools.combine_bitboard(self, 0)
+        self.occupants[1] = tools.combine_bitboard(self, 1)
+        self.occupants[2] = tools.combine_bitboard(self)
 
     def initialize_attack_map(self):
         """Initializes attack maps."""

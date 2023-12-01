@@ -269,30 +269,30 @@ def can_castle(board, color) -> bool:
     #if is_in_check(bitboards, color):
     #    return False, False
     if color == 0:
-        if castling_rights & (1 << 3):
+        if castling_rights & (1 << 0):
             # We only check if the castle through square is in check, because the resulting position will be illegal if the destination square is in check
-            if not occupants[1] & (0b11 << 5):
+            if not occupants[2] & (0b11 << 5):
                 if is_square_attacked(board, 5, color) or is_square_attacked(board, 6, color):
                     kingside = False
             else:
                 kingside = True
     
-        if castling_rights & (1 << 2):
-            if not occupants[1] & (0b11 << 2):
+        if castling_rights & (1 << 1):
+            if not occupants[2] & (0b11 << 2):
                 if is_square_attacked(board, 3, color) or is_square_attacked(board, 2, color):
                     queenside = False
             else:
                 queenside = True
     elif color == 1:
-        if castling_rights & (1 << 1):
-            if not occupants[0] & (0b11 << 61):
+        if castling_rights & (1 << 2):
+            if not occupants[2] & (0b11 << 61):
                 if is_square_attacked(board, 61, color) or is_square_attacked(board, 62, color):
                     kingside = False
             else:
                 kingside = True
         
-        if castling_rights & (1 << 0):
-            if not occupants[0] & (0b11 << 5):
+        if castling_rights & (1 << 3):
+            if not occupants[2] & (0b11 << 5):
                 if is_square_attacked(board, 59, color) or is_square_attacked(board, 58, color):
                     queenside = False
             else:

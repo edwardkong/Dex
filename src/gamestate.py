@@ -52,7 +52,7 @@ class GameState:
         evaluate_func = evaluate.evaluate_board
         #evaluate_func = random.choice
 
-        i = 3
+        i = 50
         while i:
             print("----------------------------------")
             text_board = tools.print_board(self.board)
