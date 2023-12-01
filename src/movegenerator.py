@@ -20,7 +20,7 @@ class MoveGenerator:
         self.king_square = tools.bitscan_lsb(self.board.bitboards[5 + self.color * 6])
         self.moves = []
         self.attacked_ray_mask = 0
-        
+
         self.generate_attacked_ray_mask()
         self.calculate_attacks_on_king()
 
@@ -165,12 +165,12 @@ class MoveGenerator:
                             self.check_ray_mask |= ray_mask
                             self.double_check = self.in_check
                             self.in_check = True
-                            ray_xray_rank = new_rank + d[0]
-                            ray_xray_file = new_file + d[1]
-                            ray_xray_sqaure = 8 * ray_xray_rank + ray_xray_file
-                            if 0 <= ray_xray_rank < 8 and 0 <= ray_xray_file < 8:
-                                if not self.board.occupants[2] & (1 << ray_xray_sqaure):
-                                    self.attacked_ray_mask |= (1 << ray_xray_sqaure)
+                            xray_rank = king_rank - d[0]
+                            xray_file = king_file - d[1]
+                            xray_square = 8 * xray_rank + xray_file
+                            if 0 <= xray_rank < 8 and 0 <= xray_file < 8:
+                                if not self.board.occupants[2] & (1 << xray_square):
+                                    self.attacked_ray_mask |= (1 << xray_square)
                     # Opponent piece does not have sight
                     else:
                         break
