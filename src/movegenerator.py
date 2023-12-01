@@ -20,9 +20,7 @@ class MoveGenerator:
         self.double_check = False
         self.king_square = tools.bitscan_lsb(self.board.bitboards[5 + self.color * 6])
         self.moves = []
-        if self.king_square < 0: print(f" mg {self.king_square} {self.board.bitboards}")
-
-        self.calculate_attacks_on_king(self.board)
+        self.calculate_attacks_on_king()
 
     def generate_moves(self):
         """Returns all moves for all pieces in position for a color."""
@@ -61,8 +59,10 @@ class MoveGenerator:
             new_rank, new_file = rank + d[0], file + d[1]
             new_square = 8 * new_rank + new_file
             if 0 <= new_rank < 8 and 0 <= new_file < 8:
-                if not self.board.occupants[color] & (1 << new_square) and not self.check_jump_mask & (1 << new_square):
-                    candidate.append(from_square | (new_square << 6) | (5 << 12) | (color << 15))
+                if not (self.board.occupants[color] & (1 << new_square)): 
+                    if (not (self.check_jump_mask & (1 << new_square))):
+                        if (not (self.check_ray_mask & (1 << new_square))):
+                            candidate.append(from_square | (new_square << 6) | (5 << 12) | (color << 15))
         # Castle
         if not self.in_check:
             kingside, queenside = scope.can_castle(self.board, self.color)
@@ -123,7 +123,7 @@ class MoveGenerator:
         
         return legal_moves
 
-    def calculate_attacks_on_king(self, board):
+    def calculate_attacks_on_king(self):
         """Search in rays expanding from the king's location to find attackers and pins."""
         bitboards = self.board.bitboards
         occupants = self.board.occupants
@@ -142,6 +142,7 @@ class MoveGenerator:
         end = 8 if bitboards[3 + color * 6] or bitboards[4 + color * 6] else 4
 
         for d in DIRECTIONS[start:end]:
+            ray_mask = 0
             diag = abs(d[0]) == abs(d[1])
             new_rank, new_file = king_rank + d[0], king_file + d[1]
             friendly_piece_encountered = 0

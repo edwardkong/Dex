@@ -7,12 +7,15 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
 
     ordered_moves = sorted(legal_moves, key=lambda move: moveorder.capture_priority(board, move, color))
 
-    #for m in legal_moves: 
-    #    if tools.parse_move(m)[1] == 4:
-    #        print(tools.int_to_uci(m))
-    #        print(depth)
-    #        print(color)
-    #print(legal_moves)
+    for m in legal_moves: 
+        print("========")
+        print(tools.int_to_uci(m))
+        print(depth)
+        print(color)
+        if tools.int_to_uci(m) = "e8d7":
+            print(mg.check_jump_mask)
+            print(mg.check_ray_mask)
+    print(legal_moves)
     #quit()
 
     if not legal_moves:
