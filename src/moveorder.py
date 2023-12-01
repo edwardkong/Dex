@@ -10,7 +10,7 @@ def capture_priority(board, move, color):
         if board.bitboards[piece_type] & (1 << from_square):
             break
     
-    if board.occupants[color] & (1 << to_square):
+    if board.occupants[1 - color] & (1 << to_square):
         if board.bitboards[(1 - color) * 6] & (1 << to_square):
             return 10 + piece_type
         if board.bitboards[1 + (1 - color) * 6] & (1 << to_square):

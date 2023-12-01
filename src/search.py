@@ -35,11 +35,11 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
         max_eval = float('-inf')
         best_move = None
         for move in ordered_moves:
-            
+            """
             if depth == 1:
-            #if tools.int_to_uci(move) == "c6c8":
-                print(f"\t\t\t {depth} {color}")
-                print(f"\t\t\t{tools.int_to_uci(move)}")
+                if tools.int_to_uci(move) == "d7d8":
+                    print(f"\t\t\t {depth} {color}")
+                    print(f"\t\t\t{tools.int_to_uci(move)}")
             elif depth == 2:
             #if tools.int_to_uci(move) == "e8c8":
                 print(f"\t\t{depth} {color}")
@@ -53,7 +53,7 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
                 print(f"{depth} {color}")
                 print(f"{tools.int_to_uci(move)}")
                 print("|_______\n")
-            
+            """
             eval_score, _ = minimax_alpha_beta(board.simulate_move(move), depth - 1, alpha, beta, 1, evaluate_func)
             #print(f"depth {depth} inside max")
             #print(depth, eval_score, tools.int_to_uci(move) if move else "none")
@@ -69,12 +69,13 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
         min_eval = float('inf')
         best_move = None
         for move in ordered_moves:
+            """
             if depth == 1:
-                #if tools.int_to_uci(move) == "c6c8":
-                print(f"\t\t\t {depth} {color}")
-                print(f"\t\t\t{tools.int_to_uci(move)}")
+                if tools.int_to_uci(move) == "d7d8":
+                    print(f"\t\t\t {depth} {color}")
+                    print(f"\t\t\t{tools.int_to_uci(move)}")
             elif depth == 2:
-                #if tools.int_to_uci(move) == "e8c8":
+            #if tools.int_to_uci(move) == "e8c8":
                 print(f"\t\t{depth} {color}")
                 print(f"\t\t{tools.int_to_uci(move)}")
                 print("\t\t|_______\n")
@@ -86,6 +87,7 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
                 print(f"{depth} {color}")
                 print(f"{tools.int_to_uci(move)}")
                 print("|_______\n")
+            """
 
             eval_score, _ = minimax_alpha_beta(board.simulate_move(move), depth - 1, alpha, beta, 0, evaluate_func)
             #print(f"depth {depth} inside min")
