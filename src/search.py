@@ -37,14 +37,14 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
         for move in ordered_moves:
             
             if depth == 1:
-                if tools.int_to_uci(move) == "c6c8":
-                    print(f"\t\t\t {depth} {color}")
-                    print(f"\t\t\t{tools.int_to_uci(move)}")
+            #if tools.int_to_uci(move) == "c6c8":
+                print(f"\t\t\t {depth} {color}")
+                print(f"\t\t\t{tools.int_to_uci(move)}")
             elif depth == 2:
-                if tools.int_to_uci(move) == "e8c8":
-                    print(f"\t\t{depth} {color}")
-                    print(f"\t\t{tools.int_to_uci(move)}")
-                    print("\t\t|_______\n")
+            #if tools.int_to_uci(move) == "e8c8":
+                print(f"\t\t{depth} {color}")
+                print(f"\t\t{tools.int_to_uci(move)}")
+                print("\t\t|_______\n")
             elif depth == 3: 
                 print(f"\t{depth} {color}")
                 print(f"\t{tools.int_to_uci(move)}")
@@ -70,14 +70,14 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
         best_move = None
         for move in ordered_moves:
             if depth == 1:
-                if tools.int_to_uci(move) == "c6c8":
-                    print(f"\t\t\t {depth} {color}")
-                    print(f"\t\t\t{tools.int_to_uci(move)}")
+                #if tools.int_to_uci(move) == "c6c8":
+                print(f"\t\t\t {depth} {color}")
+                print(f"\t\t\t{tools.int_to_uci(move)}")
             elif depth == 2:
-                if tools.int_to_uci(move) == "e8c8":
-                    print(f"\t\t{depth} {color}")
-                    print(f"\t\t{tools.int_to_uci(move)}")
-                    print("\t\t|_______\n")
+                #if tools.int_to_uci(move) == "e8c8":
+                print(f"\t\t{depth} {color}")
+                print(f"\t\t{tools.int_to_uci(move)}")
+                print("\t\t|_______\n")
             elif depth == 3: 
                 print(f"\t{depth} {color}")
                 print(f"\t{tools.int_to_uci(move)}")
