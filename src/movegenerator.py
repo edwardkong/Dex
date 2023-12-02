@@ -109,7 +109,7 @@ class MoveGenerator:
             #print(to_square)
             # Piece is pinned and destination is outside of the pin or
             # King is in check and piece destination is not in check_ray (blocking)
-            if (self.pinned_ray_mask & (1 << from_square) and not self.pinned_ray_mask & (1 << to_square)) or \
+            if (self.pinned_ray_mask & (1 << from_square) and not self.is_moving_along_pin(from_square, to_square)) or \
                 (self.in_check and not self.check_ray_mask & (1 << to_square)):
                     continue
             
@@ -376,4 +376,30 @@ class MoveGenerator:
 
                     # Clear the LSB to move to the next piece
                     pieces &= pieces - 1
-            
+    
+    def is_moving_along_pin(self, from_square, to_square):
+        """
+        If a piece is pinned, determines what direction the pin is and if the candidate move is along that pin. 
+        Useful when there are multiple pins in position.
+        Assumes the piece moving is pinned.
+        """
+        king_square = self.king_square
+
+        # Convert squares to coordinates
+        from_file, from_rank = from_square % 8, from_square // 8
+        to_file, to_rank = to_square % 8, to_square // 8
+        king_file, king_rank = king_square % 8, king_square // 8
+
+        # Calculate directions
+        dir_of_pin_file = king_file - from_file
+        dir_of_pin_rank = king_rank - from_rank
+        dir_of_move_file = to_file - from_file
+        dir_of_move_rank = to_rank - from_rank
+
+        # Normalize the directions
+        dir_of_pin_file = (dir_of_pin_file // abs(dir_of_pin_file)) if dir_of_pin_file != 0 else 0
+        dir_of_pin_rank = (dir_of_pin_rank // abs(dir_of_pin_rank)) if dir_of_pin_rank != 0 else 0
+        dir_of_move_file = (dir_of_move_file // abs(dir_of_move_file)) if dir_of_move_file != 0 else 0
+        dir_of_move_rank = (dir_of_move_rank // abs(dir_of_move_rank)) if dir_of_move_rank != 0 else 0
+
+        return dir_of_pin_file == dir_of_move_file and dir_of_pin_rank == dir_of_move_rank

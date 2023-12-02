@@ -73,29 +73,29 @@ class Board:
 
         # Castling Update
         # Has rook moved?
-        if piece_type == 4:
+        if piece_type == 3:
             if from_square == 7:
-                self.castling_rights &= ~(1 << 3)
+                self.castling_rights &= ~(1 << 0)
             elif from_square == 0:
-                self.castling_rights &= ~(1 << 2)
-            elif from_square == 63:
                 self.castling_rights &= ~(1 << 1)
+            elif from_square == 63:
+                self.castling_rights &= ~(1 << 2)
             elif from_square == 56:
-                self.castling_rights &= ~(1)
+                self.castling_rights &= ~(1 << 3)
 
         # Has rook been captured?
-        if self.castling_rights & (1 << 3):
+        if self.castling_rights & (1 << 0):
             if not self.bitboards[3] & (1 << 7):
-                self.castling_rights &= ~(1 << 3)
-        if self.castling_rights & (1 << 2):
-            if not self.bitboards[3] & (1 << 0):
-                self.castling_rights &= ~(1 << 2)
+                self.castling_rights &= ~(1 << 0)
         if self.castling_rights & (1 << 1):
-            if not self.bitboards[9] & (1 << 63):
+            if not self.bitboards[3] & (1 << 0):
                 self.castling_rights &= ~(1 << 1)
-        if self.castling_rights & (1):
+        if self.castling_rights & (1 << 2):
+            if not self.bitboards[9] & (1 << 63):
+                self.castling_rights &= ~(1 << 3)
+        if self.castling_rights & (1 << 3):
             if not self.bitboards[9] & (1 << 56):
-                self.castling_rights &= ~(1)
+                self.castling_rights &= ~(1 << 3)
 
         # Capture promotion
         if is_promotion:
@@ -165,7 +165,7 @@ class Board:
                         rook_to_square = 3
                         self.bitboards[3] &= ~(1 << rook_from_square)  # Clear the rook from the source square
                         self.bitboards[3] |= (1 << rook_to_square)  # Set the rook on the destination square
-                    self.castling_rights &= 0b11 # Set white's castling rights to 00
+                    self.castling_rights &= 0b1100 # Set white's castling rights to 00
                 else:  # Black
                     if to_square == 58:
                         # Black queen-side castling
@@ -179,7 +179,7 @@ class Board:
                         rook_to_square = 61
                         self.bitboards[9] &= ~(1 << rook_from_square)  # Clear the rook from the source square
                         self.bitboards[9] |= (1 << rook_to_square)  # Set the rook on the destination square
-                    self.castling_rights &= 0b1100 # Set black's castling rights to 00
+                    self.castling_rights &= 0b11 # Set black's castling rights to 00
                 self.bitboards[piece_type + color * 6] &= ~(1 << from_square)  # Clear piece from source square                
                 self.bitboards[piece_type + color * 6] |= (1 << to_square) # Set the destination square in the bitboard
             else:
