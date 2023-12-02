@@ -13,6 +13,10 @@ KING = 5
 WHITE = 0
 BLACK = 1
 
+
+
+
+
 def initialize_bitboard():
     bitboards = [0] * 12
 
@@ -178,6 +182,7 @@ def update_board(bitboards, move) -> list:
     return bitboards
 
 def simulate_move(bitboards, move):
+    # Passing object, need to deep copy
     temp_board = bitboards.copy()
 
     return refresh_occupant_bitboards(update_board(temp_board, move))
@@ -237,145 +242,7 @@ def is_square_occupied(bitboards, square): #optimized with occupant bitboards
 def is_square_occupied_friendly(bitboards, square, color) -> bool:
     return bitboards[12 + color] & (1 << square)
 
-# If color = white, checks if attacked by black
-def is_square_attacked(bitboards, square, color):
-    for piece_type in range(6):
-        pieces = bitboards[piece_type + (1 - color)*6]
-        while pieces:
-            from_square = tools.bitscan_lsb(pieces)
-            if piece_type == 0:
-                if color == 0:
-                    if square + 10 <= tools.bitscan_lsb(pieces):
-                        pieces = 0
-                        continue
-                elif color == 1:
-                    if square - 10 >= tools.bitscan_msb(pieces):
-                        pieces = 0
-                        continue
-                if is_in_pawn_scope(from_square, square, 1 - color):
-                    return True
-            elif piece_type == 1 and is_in_knight_scope(from_square, square):
-                return True
-            elif piece_type == 2 and is_in_bishop_scope(bitboards, from_square, square):
-                return True
-            elif piece_type == 3 and is_in_rook_scope(bitboards, from_square, square):
-                return True
-            elif piece_type == 4 and is_in_queen_scope(bitboards, from_square, square):
-                return True
-            elif piece_type == 5 and is_in_king_scope(from_square, square):
-                return True
-            pieces &= pieces - 1
-    return False
 
-def is_in_pawn_scope(attacker_square, target_square, color) -> bool:
-
-    attacker_rank, attacker_file = divmod(attacker_square, 8)
-    target_rank, target_file = divmod(target_square, 8)
-
-    return (abs(target_file - attacker_file) == 1) and ((target_rank - attacker_rank) == (1 if color == 0 else -1))
-
-def is_in_knight_scope(attacker_square, target_square) -> bool:
-    rank_diff = abs((attacker_square // 8) - (target_square // 8))
-    file_diff = abs((attacker_square % 8) - (target_square % 8))
-
-    return (rank_diff == 1 and file_diff == 2) or (rank_diff == 2 and file_diff == 1)
-
-def is_in_bishop_scope(bitboards, attacker_square, target_square) -> bool:
-    attacker_rank, attacker_file = divmod(attacker_square, 8)
-    target_rank, target_file = divmod(target_square, 8)
-
-    if abs(attacker_rank - target_rank) != abs(attacker_file - target_file):
-        return False
-
-    rank_increment = 1 if target_rank > attacker_rank else -1
-    file_increment = 1 if target_file > attacker_file else -1
-
-    current_rank, current_file = attacker_rank + rank_increment, attacker_file + file_increment
-    while current_rank != target_rank:
-        if current_rank >= 8 or current_rank < 0 or current_file >= 8 or current_file < 0:
-            return False
-        current_square = 8 * current_rank + current_file
-        if (bitboards[14] & (1 << current_square)):
-            return False
-        current_rank += rank_increment
-        current_file += file_increment
-
-    return True
-
-def is_in_rook_scope(bitboards, attacker_square, target_square) -> bool:
-    attacker_rank, attacker_file = divmod(attacker_square, 8)
-    target_rank, target_file = divmod(target_square, 8)
-
-    # Must be same rank or same file
-    if attacker_rank != target_rank and attacker_file != target_file:
-        return False
-
-    if attacker_rank == target_rank:  # Moving horizontally
-        file_increment = 1 if target_file > attacker_file else -1
-        current_file = attacker_file + file_increment
-        while current_file != target_file:
-            current_square = 8 * attacker_rank + current_file
-            if (bitboards[14] & (1 << current_square)):
-                # There is a piece in the path of the rook
-                return False
-            current_file += file_increment
-    else:  # Moving vertically
-        rank_increment = 1 if target_rank > attacker_rank else -1
-        current_rank = attacker_rank + rank_increment
-        while current_rank != target_rank:
-            current_square = 8 * current_rank + attacker_file
-            if (bitboards[14] & (1 << current_square)):
-                # There is a piece in the path of the rook
-                return False
-            current_rank += rank_increment
-
-    return True
-
-def can_castle(bitboards, color) -> bool:
-    kingside, queenside = False, False
-    # King cannot castle while in check
-    if is_in_check(bitboards, color):
-        return False, False
-    if color == 0:
-        if bitboards[15] & (1 << 3):
-            # We only check if the castle through square is in check, because the resulting position will be illegal if the destination square is in check
-            if not bitboards[14] & (0b11 << 5):
-                if is_square_attacked(bitboards, 5, color):
-                    kingside = False
-                else:
-                    kingside = True
-        
-        if bitboards[15] & (1 << 2):
-            if not bitboards[14] & (0b111 << 1):
-                if is_square_attacked(bitboards, 3, color):
-                    queenside = False
-                else:
-                    queenside = True
-    elif color == 1:
-        if bitboards[15] & (1 << 1):
-            if not bitboards[14] & (0b11 << 61):
-                if is_square_attacked(bitboards, 61, color):
-                    kingside = False
-                else:
-                    kingside = True
-        
-        if bitboards[15] & (1 << 0):
-            if not bitboards[14] & (0b111 << 57):
-                if is_square_attacked(bitboards, 59, color):
-                    queenside = False
-                else:
-                    queenside = True
-    
-    return kingside, queenside
-
-def is_in_queen_scope(bitboards, attacker_square, target_square) -> bool:
-    return is_in_bishop_scope(bitboards, attacker_square, target_square) or is_in_rook_scope(bitboards, attacker_square, target_square)
-
-def is_in_king_scope(attacker_square, target_square) -> bool:
-    attacker_rank, attacker_file = divmod(attacker_square, 8)
-    target_rank, target_file = divmod(target_square, 8)
-
-    return (abs(target_file - attacker_file) <= 1) and (abs(target_rank - attacker_rank) <= 1)
 
 def is_in_check(bitboards, color):
     king_square = tools.bitscan_lsb(bitboards[5 + color*6])
@@ -388,6 +255,7 @@ def is_legal_position(bitboards, color):
     if is_in_check(bitboards, 1 - color):
         return False
     return True
+
 
 
 def get_scope(bitboards, piece_type, square, color):

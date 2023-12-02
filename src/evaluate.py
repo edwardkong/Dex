@@ -1,4 +1,4 @@
-import position, tools, movegen, makemove, game, main
+import moveorder, tools, movegenerator, board, gamestate, main
 
 # Piece values
 PAWN_VALUE = 100
@@ -75,7 +75,7 @@ KING_TABLE = [
     20, 30, 10,  0,  0, 10, 30, 20
 ] # Middle / Early Game, need implementation for end game
 
-def evaluate_board(bitboards):
+def evaluate_board(board):
     evaluation = 0
 
     # Piece values
@@ -83,7 +83,7 @@ def evaluate_board(bitboards):
     for piece in range(12):
         piece_type = piece % 6
         color = piece // 6
-        pieces = bitboards[piece]
+        pieces = board.bitboards[piece]
 
         while pieces:
             # Find the index of the least significant set bit (LSB)

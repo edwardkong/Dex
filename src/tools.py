@@ -50,14 +50,14 @@ def int_to_char_piece(piece):
     if piece in map.keys():
         return map.get(piece)
 
-def combine_bitboard(bitboards: list, color = None):
+def combine_bitboard(board, color=None):
     result_bitboard = 0
     if color is None:
         for piece in range(12):
-            result_bitboard |= bitboards[piece]
+            result_bitboard |= board.bitboards[piece]
     else:
         for piece in range(6):
-            result_bitboard |= bitboards[piece + color*6]
+            result_bitboard |= board.bitboards[piece + color*6]
 
     return result_bitboard
 
@@ -83,3 +83,146 @@ def parse_move(move):
 def encode_move(from_square, to_square, piece_type, color):
     move = from_square | (to_square << 6) | (piece_type << 12) | (color << 15)
     return move
+
+def print_board(board) -> list:
+    text_board = ["-"] * 64  # 8x8
+    for piece in range(12):
+        pieces = board.bitboards[piece]
+        while pieces:
+            piece_found = bitscan_lsb(pieces)
+            text_board[piece_found] = int_to_char_piece(piece)
+            pieces &= pieces - 1
+    return text_board
+
+def print_bitboards(bitboards) -> list:
+    text_board = ["-"] * 64  # 8x8
+    for piece in range(12):
+        pieces = bitboards[piece]
+        while pieces:
+            piece_found = bitscan_lsb(pieces)
+            text_board[piece_found] = int_to_char_piece(piece)
+            pieces &= pieces - 1
+    for rank in range(7, -1, -1):
+        for file in range(8):
+            square = rank * 8 + file
+            print(text_board[square], end=" ")
+        print()
+    
+    return text_board
+
+def print_bitboard(bb_int):
+    i = 56
+    bits = bin(bb_int)
+    bits = '0' * (66 - len(bits)) + bits[2:]
+    for x in range(8):
+        print(bits[i:i+7])
+        i -= 8
+
+# Standard UCI move notation includes 4 characters, source square and destination square. 
+# Castling is specified by king position (i.e. e1g1).
+# Promotions are specified with 5 characters, to disambiguate promting pieces (i.e. g7g8q)
+
+def uci_to_int(lan_move, bitboards):
+    # Basic error checking
+    if not lan_move or not bitboards:
+        print("Invalid input.")
+        return None
+
+    # Convert UCI LAN to coordinates
+    from_square, to_square, promotion = lan_move[:2], lan_move[2:4], lan_move[4:]
+
+    # Map coordinates to bitboard indices
+    from_index = 8 * (int(from_square[1]) - 1) + ord(from_square[0]) - ord('a')
+    to_index = 8 * (int(to_square[1]) - 1) + ord(to_square[0]) - ord('a')
+
+    # Determine the piece type & color
+    for piece_color in range(12):
+        color = piece_color & 1
+        piece_type = piece_color >> 1
+
+        if (bitboards[piece_type + color*6] & (1 << from_index)):
+            break
+    else:
+        print("Invalid move: No piece found on the source square.")
+        return None
+
+    # Consider if the move is a promotion
+    if promotion:
+        promotion_mapping = {'n': 1, 'b': 2, 'r': 3, 'q': 4}
+        piece_type = promotion_mapping.get(promotion.lower(), 0)
+    
+    # Generate the move as a 32-bit integer
+    return from_index | (to_index << 6) | (piece_type << 12) | (color << 15)
+
+def int_to_uci(move):
+    from_square = move & 0x3F  # Source square
+    to_square = (move >> 6) & 0x3F  # Destination square
+    piece_type = (move >> 12) & 0x7  # Piece type (0-5)
+    color = (move >> 15) & 0x1  # Color (0 for white, 1 for black)
+    f_file = from_square % 8
+    f_rank = from_square // 8
+    f_s = chr(ord('a') + f_file) + str(f_rank + 1)
+
+    t_file = to_square % 8
+    t_rank = to_square // 8
+    t_s = chr(ord('a') + t_file) + str(t_rank + 1)
+
+    return f"{f_s}{t_s}"
+
+#print(parse_move(35124))
+#bb = [65280, 66, 36, 129, 8, 16, 67272588153323520, 4755801206503243776, 2594073385365405696, 9295429630892703744, 576460752303423488, 1152921504606846976]
+#print_bitboard(bb)
+#[56442, 56954, 52411]
+#    print(int_to_uci(i))
+
+
+"""
+9295429630892703744 rooks
+
+18141944539063
+17142674973375070208
+17142693115319609271
+
+11101101
+11100111
+00010100
+10010000
+00000000
+00101000
+11100111
+10110111
+
+ray = 1155177711056977920
+jump = 87960930222080
+
+print_bitboard(ray)
+print()
+
+print_bitboard(jump)
+
+print(bin(ray))
+
+00010000
+00001000
+00000100
+00000010
+00000000
+00000000
+00000000
+00000000
+
+
+bb = [63232, 2097154, 536870944, 129, 288230376151711744, 16, 67844282660159488, 4611686018427387904, 2308094809027379200, 9799832789158199296, 576460752303423488, 0]
+
+print_bitboards(bb)
+
+- - Q q - b n r 
+p - - b p p p p 
+- - - p - - - - 
+- - p - - - - - 
+- - - - - B - - 
+- - - - - N - - 
+P P P - P P P P 
+R N - - K B - R 
+
+"""
