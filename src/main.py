@@ -32,7 +32,7 @@ class UCI:
 
             elif parsed_command[0] == "position":
                 if parsed_command[1] == "startpos":
-                    new_game = gamestate.GameState()
+                    new_game = GameState()
                     new_game.newGameUCI()
                     if len(parsed_command) > 2:
                         if parsed_command[2] == "moves":
@@ -68,5 +68,5 @@ class UCI:
 
 if __name__ == "__main__":
     eval_func = evaluate.evaluate_board
-    depth = 2
+    depth = 1
     UCI.coms()

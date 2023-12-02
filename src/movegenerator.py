@@ -296,7 +296,7 @@ class MoveGenerator:
                 elif board.occupants[2] & (1 << square_on_rank):
                     pieces_encountered += 1
                 file += direction
-            candidate.append(to_square)
+        candidate.append(to_square)
         return candidate
 
     def generate_knight_moves(self, from_square):
