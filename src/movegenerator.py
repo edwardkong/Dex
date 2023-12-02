@@ -3,9 +3,7 @@ import board, tools, scope
 DIRECTIONS = [
         (1, 1), (1, -1), (-1, 1), (-1, -1),
         (1, 0), (-1, 0), (0, 1), (0, -1)
-]
-KNIGHT_MOVES = {(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)}
-PAWN_ATTACKS = {(-1, 1), (-1, -1), (1, 1), (1, -1)}
+        ]
 
 class MoveGenerator:
 
@@ -98,6 +96,7 @@ class MoveGenerator:
         if piece_type == 0:
             candidate.extend(self.generate_pawn_push(from_square))
             candidate.extend(self.generate_pawn_captures(from_square))
+            candidate.extend(self.generate_pawn_ep(from_square))
         elif piece_type == 1:
             candidate.extend(self.generate_knight_moves(from_square))
         elif piece_type in (2, 3, 4):
@@ -257,43 +256,48 @@ class MoveGenerator:
 
         return candidate
 
-    def generate_pawn_ep(self, from_square, color):
+    def generate_pawn_ep(self, from_square):
         """
-        Returns psuedo legal pawn en passant
-        Need to modify search function to take in gamestate as argument or make search a class function of gamestate instead
-        Retrieves the last move from the move history and checks if it was a double pawn push.
-        If it was a double pawn push, check if there is a pawn that can capture en passant. (rank 3 for white, 4 for black (middle ranks))
-        Check all check rules:
-            Does taking en passant put the king in check?
-            If the pawn is the pinned piece.
-            If the pawn is xray pinned (horizontal ray)
+        Returns psuedo legal pawn en passant captures. Double pinned pawns in EP are checked.
         """
+        candidate = []
+        color = self.color
+        board = self.board
+        if board.en_passant_flag == -1:
+            return candidate
+        else:
+            ep_file = board.en_passant_flag
 
-        
-        en_passant_legal = False
-        try:
-            if last_move is not None:
-                last_move_from = ord(last_move[0]) - ord('a') + (int(last_move[1]) - 1) * 8
-                last_move_to = ord(last_move[2]) - ord('a') + (int(last_move[3]) - 1) * 8
-                if 24 <= from_square < 40:
-                    if abs(last_move_from - last_move_to) == 16:            
-                        if bitboards[0 + (1 - color)*6] & (1 << last_move_to):
-                            if last_move_to >=32 and from_square >= 32 and abs(last_move_to - from_square) == 1:
-                                en_passant_legal = True
-                            elif last_move_to < 32 and from_square < 32 and abs(last_move_to - from_square) == 1:
-                                en_passant_legal = True
-        except KeyError:
-            pass
+        rank = from_square // 8
+        file = from_square % 8
 
-        if en_passant_legal:
-            if color == 0:
-                candidate.append(last_move_to + 8)
-            else:
-                candidate.append(last_move_to - 8)
+        if color == 0 and rank == 4 and abs(file - ep_file) == 1:
+            to_square = from_square + ep_file - file + 8
+        elif color == 1 and rank == 3 and abs(file - ep_file) == 1:
+            to_square = from_square + ep_file - file - 8
+        else:
+            return []
+        # Normal pins/blocks checked in piece gen. EP has special condition need to be checked, if both the capturing pawn and the captured pawn are in the pin ray.
+        king_square = self.king_square
+        king_rank = king_square // 8
+        king_file = king_square % 8
+        direction = 1 if file > king_file else -1
 
+        # If king is horizontally aligned with the en passant pawns, check past the pawns to see if there are any rooks/queens on the rank, xraying the king.
+        if king_rank == rank:
+            pieces_encountered = 0
+            square_on_rank = file + rank * 8
+
+            while 0 <= file < 8:
+                square_on_rank = file + rank * 8 + direction
+                # Rook or Queen seen, not enough pieces blocking EP.
+                if ((board.bitboards[3 + (1 - color) * 6] | board.bitboards[4 + (1 - color) * 6]) & (1 << square_on_rank)) and pieces_encountered < 3:
+                    return
+                elif board.occupants[2] & (1 << square_on_rank):
+                    pieces_encountered += 1
+                file += direction
+            candidate.append(to_square)
         return candidate
-        """
-        pass
 
     def generate_knight_moves(self, from_square):
         """Returns psuedo legal knight moves."""

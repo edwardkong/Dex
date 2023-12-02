@@ -1,9 +1,18 @@
 from board import Board
 from movegenerator import MoveGenerator
+from gamestate import GameState
 
 import moveorder, tools, gamestate, evaluate
 import random, sys, subprocess
 import gc, time
+"""
+Main creates a gamestate
+gamestate creates a board
+gamestate creates a searcher
+searcher creates a movegenerator
+searcher calls evaluate (should be created)
+
+"""
 
 
 class UCI:
@@ -23,27 +32,27 @@ class UCI:
 
             elif parsed_command[0] == "position":
                 if parsed_command[1] == "startpos":
-                    ng = gamestate.GameState()
-                    ng.newGameUCI()
+                    new_game = gamestate.GameState()
+                    new_game.newGameUCI()
                     if len(parsed_command) > 2:
                         if parsed_command[2] == "moves":
                             for move in parsed_command[3:]:
-                                given_move = tools.uci_to_int(move, ng.board.bitboards)
-                                ng.make_move(given_move)
+                                given_move = tools.uci_to_int(move, new_game.board.bitboards)
+                                new_game.make_move(given_move)
 
             elif parsed_command[0] == "go":
                 if parsed_command[1] == "movetime":
-                    eval, best_move = ng.startSearchTimed(parsed_command[2], depth, eval_func)
+                    eval, best_move = new_game.startSearchTimed(parsed_command[2], depth, eval_func)
                     print(f"bestmove {tools.int_to_uci(best_move)}")
-                    ng.make_move(best_move)
+                    new_game.make_move(best_move)
                     eval = None
                     best_move = None
                 elif parsed_command[1] == "infinite": # inifinite search
-                    eval, best_move = ng.search(depth, ng.turn, eval_func)
+                    eval, best_move = new_game.search(depth, new_game.turn, eval_func)
                 else:
-                    eval, best_move = ng.search(depth, ng.turn, eval_func)
+                    eval, best_move = new_game.search(depth, new_game.turn, eval_func)
                     print(f"bestmove {tools.int_to_uci(best_move)}")
-                    ng.make_move(best_move)
+                    new_game.make_move(best_move)
                     #eval = None
                     #best_move = None
                     #gc.collect()
@@ -51,7 +60,7 @@ class UCI:
             elif parsed_command[0] == "stop":
                 if best_move:
                     print(f"bestmove {tools.int_to_uci(best_move)}")
-                    ng.board.make_move(best_move)
+                    new_game.board.make_move(best_move)
                     #gc.collect()
 
             elif parsed_command[0] == "quit":
@@ -59,5 +68,5 @@ class UCI:
 
 if __name__ == "__main__":
     eval_func = evaluate.evaluate_board
-    depth = 10
+    depth = 2
     UCI.coms()

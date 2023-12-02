@@ -1,4 +1,4 @@
-import moveorder, tools, movegenerator, board, gamestate, main
+import moveorder, tools, movegenerator, board
 
 # Piece values
 PAWN_VALUE = 100
