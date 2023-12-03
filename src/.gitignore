@@ -1,0 +1,21 @@
+# Ignore files and directories
+#file.txt
+deprecated/
+build/
+dist/
+*.spec
+
+# Ignore all files with a specific extension
+#*.log
+
+# Ignore files in a specific directory
+#directory/*.txt
+
+# Ignore files with a specific name pattern
+#**/pattern*.txt
+
+# Ignore files in a specific directory and its subdirectories
+#directory/**
+
+# Ignore a specific file in a specific directory
+#directory/file.txt

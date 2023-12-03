@@ -391,8 +391,8 @@ class MoveGenerator:
         king_file, king_rank = king_square % 8, king_square // 8
 
         # Calculate directions
-        dir_of_pin_file = king_file - from_file
-        dir_of_pin_rank = king_rank - from_rank
+        dir_of_pin_file = from_file - king_file
+        dir_of_pin_rank =  from_rank - king_rank
         dir_of_move_file = to_file - from_file
         dir_of_move_rank = to_rank - from_rank
 
