@@ -13,6 +13,7 @@
 - Castling rights stored as bitboard
 - Some optimizations
 - Code cleanup
+  
 First bot win!
 12.11.26am 11.29.2023
 bernstein-2ply 1437 (0-1) dex_engine 1260
