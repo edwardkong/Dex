@@ -276,7 +276,7 @@ class MoveGenerator:
         elif color == 1 and rank == 3 and abs(file - ep_file) == 1:
             to_square = from_square + ep_file - file - 8
         else:
-            return []
+            return candidate
         # Normal pins/blocks checked in piece gen. EP has special condition need to be checked, if both the capturing pawn and the captured pawn are in the pin ray.
         king_square = self.king_square
         king_rank = king_square // 8
@@ -292,7 +292,7 @@ class MoveGenerator:
                 square_on_rank = file + rank * 8 + direction
                 # Rook or Queen seen, not enough pieces blocking EP.
                 if ((board.bitboards[3 + (1 - color) * 6] | board.bitboards[4 + (1 - color) * 6]) & (1 << square_on_rank)) and pieces_encountered < 3:
-                    return
+                    return candidate
                 elif board.occupants[2] & (1 << square_on_rank):
                     pieces_encountered += 1
                 file += direction
@@ -390,16 +390,22 @@ class MoveGenerator:
         to_file, to_rank = to_square % 8, to_square // 8
         king_file, king_rank = king_square % 8, king_square // 8
 
-        # Calculate directions
-        dir_of_pin_file = from_file - king_file
-        dir_of_pin_rank =  from_rank - king_rank
-        dir_of_move_file = to_file - from_file
-        dir_of_move_rank = to_rank - from_rank
+        # Calculate magnitude
+        mag_pin_file = from_file - king_file
+        mag_pin_rank =  from_rank - king_rank
 
-        # Normalize the directions
-        dir_of_pin_file = (dir_of_pin_file // abs(dir_of_pin_file)) if dir_of_pin_file != 0 else 0
-        dir_of_pin_rank = (dir_of_pin_rank // abs(dir_of_pin_rank)) if dir_of_pin_rank != 0 else 0
-        dir_of_move_file = (dir_of_move_file // abs(dir_of_move_file)) if dir_of_move_file != 0 else 0
-        dir_of_move_rank = (dir_of_move_rank // abs(dir_of_move_rank)) if dir_of_move_rank != 0 else 0
+        # Calculate normalized directions
+        dir_pin_file = (mag_pin_file // abs(mag_pin_file)) if mag_pin_file != 0 else 0
+        dir_pin_rank = (mag_pin_rank // abs(mag_pin_rank)) if mag_pin_rank != 0 else 0
 
-        return dir_of_pin_file == dir_of_move_file and dir_of_pin_rank == dir_of_move_rank
+        
+        new_file = king_file + dir_pin_file
+        new_rank = king_rank + dir_pin_rank
+
+        while 0 <= new_file < 8 and 0 <= new_rank < 8:
+            if new_file == to_file and new_rank == to_rank:
+                return True
+            new_file += dir_pin_file
+            new_rank += dir_pin_rank
+        
+        return False

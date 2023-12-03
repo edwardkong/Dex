@@ -109,3 +109,26 @@ def evaluate_board(board):
 
 
     return evaluation
+
+def update_depth(gamestate):
+    color = gamestate.turn
+
+    pieces_remaining_score = 0
+
+    for piece_type in range(5):
+        num_pieces = bin(gamestate.board.bitboards[piece_type + color * 6]).count('1')
+        if piece_type == 0:
+            pieces_remaining_score += num_pieces * PAWN_VALUE
+        elif piece_type == 1:
+            pieces_remaining_score += num_pieces * KNIGHT_VALUE
+        elif piece_type == 2:
+            pieces_remaining_score += num_pieces * BISHOP_VALUE
+        elif piece_type == 3:
+            pieces_remaining_score += num_pieces * ROOK_VALUE
+        elif piece_type == 4:
+            pieces_remaining_score += num_pieces * QUEEN_VALUE
+    
+    if pieces_remaining_score <= 1200:
+        return 6
+    else:
+        return 4

@@ -87,15 +87,15 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
         max_eval = float('-inf')
         best_move = None
         for move in ordered_moves:
-            
-            """if depth == 1:
-                if tools.int_to_uci(move) == "c4g8":
+            """
+            if depth == 1:
+                if tools.int_to_uci(move):
                     print(f"\t\t\t {depth} {color}")
                     print(f"\t\t\t{tools.int_to_uci(move)}")
                     print("\t\t\t|_______\n")
                     
             elif depth == 2:
-                if tools.int_to_uci(move) == "c3e2":
+                if tools.int_to_uci(move) == "d2b3":
                     print(f"\t\t{depth} {color}")
                     print(f"\t\t{tools.int_to_uci(move)}")
                     print("\t\t|_______\n")
@@ -108,9 +108,9 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
                 if tools.int_to_uci(move):
                     print(f"{depth} {color}")
                     print(f"{tools.int_to_uci(move)}")
-                    print("|_______\n")"""
+                    print("|_______\n")
             
-                    
+                    """
             
             eval_score, _ = minimax_alpha_beta(board.simulate_move(move), depth - 1, alpha, beta, 1, evaluate_func)
             #print(depth, tools.int_to_uci(move), eval_score, max_eval)
@@ -126,20 +126,20 @@ def minimax_alpha_beta(board, depth, alpha, beta, color, evaluate_func):
         min_eval = float('inf')
         best_move = None
         for move in ordered_moves:
-            
-            """if depth == 1:
-                if tools.int_to_uci(move) =="a5e1":
+            """
+            if depth == 1:
+                if tools.int_to_uci(move) == "b4e1":
                     print(f"\t\t\t {depth} {color}")
                     print(f"\t\t\t{tools.int_to_uci(move)}")
                     print("\t\t\t|_______\n")
                     
             elif depth == 2:
-                if tools.int_to_uci(move) == "f7g6":
+                if tools.int_to_uci(move):
                     print(f"\t\t{depth} {color}")
                     print(f"\t\t{tools.int_to_uci(move)}")
                     print("\t\t|_______\n")
             elif depth == 3: 
-                if tools.int_to_uci(move) =="d8e5":
+                if tools.int_to_uci(move):
                     print(f"\t{depth} {color}")
                     print(f"\t{tools.int_to_uci(move)}")
                     print("\t|_______\n")

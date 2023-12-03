@@ -50,6 +50,8 @@ class UCI:
                 elif parsed_command[1] == "infinite": # inifinite search
                     eval, best_move = new_game.search(depth, new_game.turn, eval_func)
                 else:
+                    if new_game.move > 20:
+                        depth = evaluate.update_depth(new_game)
                     eval, best_move = new_game.search(depth, new_game.turn, eval_func)
                     print(f"bestmove {tools.int_to_uci(best_move)}")
                     new_game.make_move(best_move)
