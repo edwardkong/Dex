@@ -1,18 +1,8 @@
-from board import Board
-from movegenerator import MoveGenerator
 from gamestate import GameState
 
-import moveorder, tools, gamestate, evaluate
-import random, sys, subprocess
-import gc, time
-"""
-Main creates a gamestate
-gamestate creates a board
-gamestate creates a searcher
-searcher creates a movegenerator
-searcher calls evaluate (should be created)
-
-"""
+import tools
+import evaluate
+import gc
 
 
 class UCI:

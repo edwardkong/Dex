@@ -1,4 +1,4 @@
-import scope, tools, copy
+import tools
 
 class Board:
     # Board representing position of pieces
@@ -49,13 +49,8 @@ class Board:
 
     def make_move(self, move):
         """Updates the board given a move."""
-        #print(f"{move} {self.bitboards}")
-
-        #self.attack_map = self.update_attack_map(move)
-        #self.update_consolidated_attack_maps()
         self.update_board(move)
         self.refresh_occupant_bitboards()
-        #self.castling_rights = self.update_castling_rights(move)
         return self
 
     def update_board(self, move):
@@ -69,7 +64,6 @@ class Board:
         is_promotion = (self.bitboards[0 + color * 6] & (1 << from_square)) and (
             to_square // 8 == 0 or to_square // 8 == 7
         )
-        
 
         # Castling Update
         # Has rook moved?
@@ -219,9 +213,6 @@ class Board:
     def simulate_move(self, move):
         """Simulate a move without updating the board"""
         board_copy = self.copy_board()
-
-        #board_copy.update_attack_map(move)
-        #board_copy.update_consolidated_attack_maps()
         board_copy.update_board(move)
         board_copy.refresh_occupant_bitboards()
 

@@ -1,4 +1,4 @@
-import board, tools, scope
+import tools, scope
 
 DIRECTIONS = [
         (1, 1), (1, -1), (-1, 1), (-1, -1),
@@ -36,14 +36,6 @@ class MoveGenerator:
                     # Find the index of the least significant set bit (LSB)
                     from_square = tools.bitscan_lsb(pieces)
                     
-
-                    #test = self.generate_piece_moves(piece_type, from_square)
-                    #print(from_square)
-                    #print(piece_type)
-                    #print(test)
-                    
-                    #self.moves.extend(test)
-
                     # Generate moves for the current piece
                     self.moves.extend(self.generate_piece_moves(piece_type, from_square))
 
@@ -51,8 +43,6 @@ class MoveGenerator:
                     pieces &= pieces - 1
         
             return self.moves
-
-        return self.moves
 
     def generate_king_moves(self):
         """Returns list of legal king moves."""
@@ -90,8 +80,6 @@ class MoveGenerator:
         candidate = []
         legal_moves = []
         color = self.color
-        #print(f"piece_type: {piece_type}")
-        #print(f"from_square: {from_square}")
 
         if piece_type == 0:
             candidate.extend(self.generate_pawn_push(from_square))
@@ -101,12 +89,10 @@ class MoveGenerator:
             candidate.extend(self.generate_knight_moves(from_square))
         elif piece_type in (2, 3, 4):
             candidate.extend(self.generate_sliding_moves(from_square, piece_type))
-        #print(f"candidate: {candidate}")
         for to_square in candidate:
             if type(to_square) == str:
                 piece_type = tools.char_to_int_piece(to_square[-1])
                 to_square = int(to_square[:-1])
-            #print(to_square)
             # Piece is pinned and destination is outside of the pin or
             # King is in check and piece destination is not in check_ray (blocking)
             if (self.pinned_ray_mask & (1 << from_square) and not self.is_moving_along_pin(from_square, to_square)) or \
@@ -129,7 +115,6 @@ class MoveGenerator:
         king_file = king_square % 8
 
         # Search for sliding piece attack rays in all directions
-        
         start = 0 if bitboards[2 + (1 - color) * 6] or bitboards[4 + (1 - color) * 6] else 4
         end = 8 if bitboards[3 + (1 - color) * 6] or bitboards[4 + (1 - color) * 6] else 4
 
@@ -257,9 +242,7 @@ class MoveGenerator:
         return candidate
 
     def generate_pawn_ep(self, from_square):
-        """
-        Returns psuedo legal pawn en passant captures. Double pinned pawns in EP are checked.
-        """
+        """Returns psuedo legal pawn en passant captures. Double pinned pawns in EP are checked."""
         candidate = []
         color = self.color
         board = self.board

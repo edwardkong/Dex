@@ -4,6 +4,7 @@ deprecated/
 build/
 dist/
 *.spec
+test.py
 
 # Ignore all files with a specific extension
 #*.log
