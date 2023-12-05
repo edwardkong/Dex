@@ -20,3 +20,4 @@ test.py
 
 # Ignore a specific file in a specific directory
 #directory/file.txt
+.vscode/settings.json

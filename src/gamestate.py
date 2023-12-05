@@ -6,6 +6,7 @@ class GameState:
     def __init__(self, board: Board=None):
         if board is None:
             self.board = Board()
+
         else:
             self.board = board
 
@@ -26,14 +27,17 @@ class GameState:
         alpha = float("-inf")
         beta = float("inf")
         eval, move = search.minimax_alpha_beta(self.board, depth, alpha, beta, color, evaluate_func)
+        
         return eval, move
 
     def startSearchTimed(self, movetime, depth, evaluate_func):
         start_time = time.time()
         eval, best_move = self.search(depth, self.turn, evaluate_func)
         elapsed_time_ms = (time.time() - start_time) * 1000
+
         if elapsed_time_ms < float(movetime):
             time.sleep((float(movetime) - elapsed_time_ms) / 1000)
+
         return eval, best_move
 
     def make_move(self, move):
