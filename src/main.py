@@ -4,9 +4,10 @@ import tools
 import evaluate
 import gc
 
-
 class UCI:
     def coms():
+        eval_func = evaluate.evaluate_board
+        depth = 4
         gc.disable()
         while(True):
             command = input()
@@ -31,6 +32,8 @@ class UCI:
                                 new_game.make_move(given_move)
 
             elif parsed_command[0] == "go":
+                if new_game.move > 20:
+                        depth = evaluate.update_depth(new_game)
                 if parsed_command[1] == "movetime":
                     eval, best_move = new_game.startSearchTimed(parsed_command[2], depth, eval_func)
                     print(f"bestmove {tools.int_to_uci(best_move)}")
@@ -40,25 +43,19 @@ class UCI:
                 elif parsed_command[1] == "infinite": # inifinite search
                     eval, best_move = new_game.search(depth, new_game.turn, eval_func)
                 else:
-                    if new_game.move > 20:
-                        depth = evaluate.update_depth(new_game)
                     eval, best_move = new_game.search(depth, new_game.turn, eval_func)
                     print(f"bestmove {tools.int_to_uci(best_move)}")
                     new_game.make_move(best_move)
-                    #eval = None
-                    #best_move = None
-                    #gc.collect()
+                gc.collect()
 
             elif parsed_command[0] == "stop":
                 if best_move:
                     print(f"bestmove {tools.int_to_uci(best_move)}")
                     new_game.board.make_move(best_move)
-                    #gc.collect()
+                    gc.collect()
 
             elif parsed_command[0] == "quit":
                 quit()
 
 if __name__ == "__main__":
-    eval_func = evaluate.evaluate_board
-    depth = 4
     UCI.coms()
