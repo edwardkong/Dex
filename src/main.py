@@ -1,13 +1,14 @@
 from gamestate import GameState
-
 import tools
 import evaluate
 import gc
 
-
 class UCI:
     def coms():
+        eval_func = evaluate.evaluate_board
+        depth = 4
         gc.disable()
+
         while(True):
             command = input()
             parsed_command = command.split(" ")
@@ -24,6 +25,7 @@ class UCI:
                 if parsed_command[1] == "startpos":
                     new_game = GameState()
                     new_game.newGameUCI()
+                    
                     if len(parsed_command) > 2:
                         if parsed_command[2] == "moves":
                             for move in parsed_command[3:]:
@@ -31,34 +33,34 @@ class UCI:
                                 new_game.make_move(given_move)
 
             elif parsed_command[0] == "go":
+                if new_game.move > 20:
+                        depth = evaluate.update_depth(new_game)
+
                 if parsed_command[1] == "movetime":
                     eval, best_move = new_game.startSearchTimed(parsed_command[2], depth, eval_func)
                     print(f"bestmove {tools.int_to_uci(best_move)}")
                     new_game.make_move(best_move)
                     eval = None
                     best_move = None
-                elif parsed_command[1] == "infinite": # inifinite search
+
+                elif parsed_command[1] == "infinite":
                     eval, best_move = new_game.search(depth, new_game.turn, eval_func)
+
                 else:
-                    if new_game.move > 20:
-                        depth = evaluate.update_depth(new_game)
                     eval, best_move = new_game.search(depth, new_game.turn, eval_func)
                     print(f"bestmove {tools.int_to_uci(best_move)}")
                     new_game.make_move(best_move)
-                    #eval = None
-                    #best_move = None
-                    #gc.collect()
+
+                gc.collect()
 
             elif parsed_command[0] == "stop":
                 if best_move:
                     print(f"bestmove {tools.int_to_uci(best_move)}")
                     new_game.board.make_move(best_move)
-                    #gc.collect()
+                    gc.collect()
 
             elif parsed_command[0] == "quit":
                 quit()
 
 if __name__ == "__main__":
-    eval_func = evaluate.evaluate_board
-    depth = 4
     UCI.coms()

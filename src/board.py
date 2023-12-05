@@ -8,11 +8,13 @@ class Board:
             self.occupants = list(board.occupants)
             self.castling_rights = board.castling_rights
             self.en_passant_flag = board.en_passant_flag
+
         else:
             self.new_board()
 
     def copy_board(self):
         copy_board = Board(self)
+
         return copy_board
 
     def new_board(self) -> None:
@@ -39,7 +41,6 @@ class Board:
 
     def initialize_occupants(self):
         self.occupants = [0] * 3
-
         self.occupants[0] = tools.combine_bitboard(self, 0)
         self.occupants[1] = tools.combine_bitboard(self, 1)
         self.occupants[2] = tools.combine_bitboard(self)
@@ -51,6 +52,7 @@ class Board:
         """Updates the board given a move."""
         self.update_board(move)
         self.refresh_occupant_bitboards()
+
         return self
 
     def update_board(self, move):
@@ -70,10 +72,13 @@ class Board:
         if piece_type == 3:
             if from_square == 7:
                 self.castling_rights &= ~(1 << 0)
+
             elif from_square == 0:
                 self.castling_rights &= ~(1 << 1)
+
             elif from_square == 63:
                 self.castling_rights &= ~(1 << 2)
+
             elif from_square == 56:
                 self.castling_rights &= ~(1 << 3)
 
@@ -81,12 +86,15 @@ class Board:
         if self.castling_rights & (1 << 0):
             if not self.bitboards[3] & (1 << 7):
                 self.castling_rights &= ~(1 << 0)
+
         if self.castling_rights & (1 << 1):
             if not self.bitboards[3] & (1 << 0):
                 self.castling_rights &= ~(1 << 1)
+
         if self.castling_rights & (1 << 2):
             if not self.bitboards[9] & (1 << 63):
                 self.castling_rights &= ~(1 << 3)
+
         if self.castling_rights & (1 << 3):
             if not self.bitboards[9] & (1 << 56):
                 self.castling_rights &= ~(1 << 3)
@@ -96,16 +104,12 @@ class Board:
             if abs(from_square - to_square) in (7, 9):
                 for captured_piece in range(6):
                     if self.bitboards[captured_piece + (1 - color) * 6] & (1 << to_square):
-                        self.bitboards[captured_piece + (1 - color) * 6] &= ~(
-                            1 << to_square
-                        )  # Clear captured piece on promotion square
+                        self.bitboards[captured_piece + (1 - color) * 6] &= ~(1 << to_square)  # Clear captured piece on promotion square
                         break
-            self.bitboards[0 + color * 6] &= ~(
-                1 << from_square
-            )  # Clear pawn from source square
-            self.bitboards[piece_type + color * 6] |= (
-                1 << to_square
-            )  # Add promoted piece to destination square
+
+            self.bitboards[0 + color * 6] &= ~(1 << from_square)  # Clear pawn from source square
+            self.bitboards[piece_type + color * 6] |= (1 << to_square)  # Add promoted piece to destination square
+
             return self.bitboards
 
         # Pawn moves, non-promotion
@@ -115,25 +119,20 @@ class Board:
                 # Determine if capture is en passant
                 en_passant = True
                 # If diagonal pawn move, but no piece on the destination square, it is en passant
+
                 for captured_piece in range(6):
                     if self.bitboards[captured_piece + (1 - color) * 6] & (1 << to_square):
                         en_passant = False
                         break
+
                 if en_passant:
-                    en_passant_square = (
-                        to_square + 8 if from_square > to_square else to_square - 8
-                    )
-                    self.bitboards[0 + (1 - color) * 6] &= ~(
-                        1 << en_passant_square
-                    )  # Clear pawn captured by en passant
-                    self.bitboards[0 + color * 6] &= ~(
-                        1 << from_square
-                    )  # Clear capturing piece from source square
+                    en_passant_square = (to_square + 8 if from_square > to_square else to_square - 8)
+                    self.bitboards[0 + (1 - color) * 6] &= ~(1 << en_passant_square)  # Clear pawn captured by en passant
+                    self.bitboards[0 + color * 6] &= ~(1 << from_square)  # Clear capturing piece from source square
+
                 else:
                     self.bitboards[0 + color * 6] &= ~(1 << from_square)
-                    self.bitboards[captured_piece + (1 - color) * 6] &= ~(
-                        1 << to_square
-                    )  # Clear destination square (piece captured)
+                    self.bitboards[captured_piece + (1 - color) * 6] &= ~(1 << to_square)  # Clear destination square (piece captured)
 
             # Normal move
             else:
@@ -146,36 +145,43 @@ class Board:
         elif piece_type == 5:  # King
             # Check for castling
             if abs(from_square - to_square) == 2:
-                if color == 0:  # White
+                if color == 0:
                     if to_square == 6:
                         # White king-side castling
                         rook_from_square = 7
                         rook_to_square = 5
                         self.bitboards[3] &= ~(1 << rook_from_square)  # Clear the rook from the source square
                         self.bitboards[3] |= (1 << rook_to_square)  # Set the rook on the destination square
+
                     elif to_square == 2:
                         # White queen-side castling
                         rook_from_square = 0
                         rook_to_square = 3
                         self.bitboards[3] &= ~(1 << rook_from_square)  # Clear the rook from the source square
                         self.bitboards[3] |= (1 << rook_to_square)  # Set the rook on the destination square
+
                     self.castling_rights &= 0b1100 # Set white's castling rights to 00
-                else:  # Black
+
+                else:
                     if to_square == 58:
                         # Black queen-side castling
                         rook_from_square = 56
                         rook_to_square = 59
                         self.bitboards[9] &= ~(1 << rook_from_square)  # Clear the rook from the source square
                         self.bitboards[9] |= (1 << rook_to_square)  # Set the rook on the destination square
+
                     elif to_square == 62:
                         # Black king-side castling
                         rook_from_square = 63
                         rook_to_square = 61
                         self.bitboards[9] &= ~(1 << rook_from_square)  # Clear the rook from the source square
                         self.bitboards[9] |= (1 << rook_to_square)  # Set the rook on the destination square
+
                     self.castling_rights &= 0b11 # Set black's castling rights to 00
+
                 self.bitboards[piece_type + color * 6] &= ~(1 << from_square)  # Clear piece from source square                
                 self.bitboards[piece_type + color * 6] |= (1 << to_square) # Set the destination square in the bitboard
+
             else:
                 # Check if it's a capture
                 if self.occupants[1 - color] & (1 << to_square):
@@ -183,11 +189,13 @@ class Board:
                         if self.bitboards[captured_piece + (1 - color) * 6] & (1 << to_square):
                             self.bitboards[captured_piece + (1 - color) * 6] &= ~(1 << to_square)  # Clear captured piece on destination square
                             break
+
                 self.bitboards[piece_type + color * 6] &= ~(1 << from_square)  # Clear piece from source square
                 self.bitboards[piece_type + color * 6] |= (1 << to_square) # Set the destination square in the bitboard
 
                 if color: 
                     self.castling_rights &= 0b11
+
                 else: 
                     self.castling_rights &= 0b1100
 
@@ -198,6 +206,7 @@ class Board:
                     if self.bitboards[captured_piece + (1 - color) * 6] & (1 << to_square):
                         self.bitboards[captured_piece + (1 - color) * 6] &= ~(1 << to_square)  # Clear captured piece on destination square
                         break
+
             self.bitboards[piece_type + color * 6] &= ~(1 << from_square)  # Clear piece from source square
             self.bitboards[piece_type + color * 6] |= (1 << to_square)
             return self.bitboards
@@ -205,6 +214,7 @@ class Board:
         # En passant update
         if self.en_passant_flag != -1:
             self.en_passant_flag = -1
+
         if (abs(from_square - to_square) == 16 and piece_type == 0):
             self.en_passant_flag = to_square % 8
 
@@ -220,20 +230,6 @@ class Board:
 
     def refresh_occupant_bitboards(self):
         """Returns occupants[] as bitboards representing white, black, and combined pieces."""
-
         self.occupants[0] = tools.combine_bitboard(self, 0)
         self.occupants[1] = tools.combine_bitboard(self, 1)
         self.occupants[2] = tools.combine_bitboard(self)
-
-    def is_square_attacked(self, square, color):
-        """Returns if true if a square is attacked by opponent."""
-        return self.attack_map[12 + color] & (1 << square)
-
-    def is_square_occupied(self, square, color=None):
-        """Returns true if a square is occupied by the specified color. If no color is specified, returns true if the square is occupied by any piece."""
-        return self.occupants[color] & (1 << square) if color else self.occupants[2] & (1 << square)
-
-    def is_in_check(self, color, board=None):
-        if board is None:
-            board = self
-        return board.bitboards[5 + color * 6] & board.attack_map[12 + color]

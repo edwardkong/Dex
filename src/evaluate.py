@@ -88,25 +88,27 @@ def evaluate_board(board):
         while pieces:
             # Find the index of the least significant set bit (LSB)
             square = tools.bitscan_lsb(pieces) if color else (63 - tools.bitscan_lsb(pieces))
-
             sign = -1 if color else 1
-
             if piece_type == 0:
                 evaluation += ((sign * PAWN_VALUE) + (sign * PAWN_TABLE[square]))
+
             elif piece_type == 1:
                 evaluation += ((sign * KNIGHT_VALUE) + (sign * KNIGHT_TABLE[square]))
+
             elif piece_type == 2:
                 evaluation += ((sign * BISHOP_VALUE) + (sign * BISHOP_TABLE[square]))
+
             elif piece_type == 3:
                 evaluation += ((sign * ROOK_VALUE) + (sign * ROOK_TABLE[square]))
+
             elif piece_type == 4:
                 evaluation += ((sign * QUEEN_VALUE) + (sign * QUEEN_TABLE[square]))
+
             elif piece_type == 5:
                 evaluation += ((sign * KING_VALUE) + (sign * KING_TABLE[square]))
 
             # Clear the LSB to move to the next piece
             pieces &= pieces - 1
-
 
     return evaluation
 
@@ -119,16 +121,21 @@ def update_depth(gamestate):
         num_pieces = bin(gamestate.board.bitboards[piece_type + color * 6]).count('1')
         if piece_type == 0:
             pieces_remaining_score += num_pieces * PAWN_VALUE
+
         elif piece_type == 1:
             pieces_remaining_score += num_pieces * KNIGHT_VALUE
+
         elif piece_type == 2:
             pieces_remaining_score += num_pieces * BISHOP_VALUE
+
         elif piece_type == 3:
             pieces_remaining_score += num_pieces * ROOK_VALUE
+
         elif piece_type == 4:
             pieces_remaining_score += num_pieces * QUEEN_VALUE
     
     if pieces_remaining_score <= 1200:
         return 6
+    
     else:
         return 4
