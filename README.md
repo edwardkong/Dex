@@ -1,6 +1,14 @@
 # Dex Chess engine
+# Dev log
 
+0.1.1
+- AWS Lambda execution
 
+0.1.0
+- Special moves and rare cases
+- Pins
+- Bug fixes
+  
 0.0.3
 - Move generation improvement with attack maps
 - checkmate and stalemate evaluation
