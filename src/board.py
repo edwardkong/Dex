@@ -61,11 +61,10 @@ class Board:
         to_square = (move >> 6) & 0x3F  # Destination square
         piece_type = (move >> 12) & 0x7  # Piece type (0-5)
         color = (move >> 15) & 0x1  # Color (0 for white, 1 for black)
+        promotion_flag = (move >> 16) & 0x1
 
         # Check if it's a pawn and moving to last rank
-        is_promotion = (self.bitboards[0 + color * 6] & (1 << from_square)) and (
-            to_square // 8 == 0 or to_square // 8 == 7
-        )
+        is_promotion = promotion_flag
 
         # Castling Update
         # Has rook moved?

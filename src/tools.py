@@ -159,6 +159,8 @@ def int_to_uci(move):
     to_square = (move >> 6) & 0x3F  # Destination square
     piece_type = (move >> 12) & 0x7  # Piece type (0-5)
     color = (move >> 15) & 0x1  # Color (0 for white, 1 for black)
+    promotion_flag = (move >> 16) & 0x1 # 1 if promotion
+
     f_file = from_square % 8
     f_rank = from_square // 8
     f_s = chr(ord('a') + f_file) + str(f_rank + 1)
@@ -166,5 +168,7 @@ def int_to_uci(move):
     t_file = to_square % 8
     t_rank = to_square // 8
     t_s = chr(ord('a') + t_file) + str(t_rank + 1)
+    
+    piece_char = int_to_char_piece(piece_type).lower()
 
-    return f"{f_s}{t_s}"
+    return f"{f_s}{t_s}{piece_char if promotion_flag else ''}"

@@ -98,9 +98,11 @@ class MoveGenerator:
             candidate.extend(self.generate_sliding_moves(from_square, piece_type))
 
         for to_square in candidate:
+            promotion_flag = 0
             if type(to_square) == str:
                 piece_type = tools.char_to_int_piece(to_square[-1])
                 to_square = int(to_square[:-1])
+                promotion_flag = 1
 
             # Piece is pinned and destination is outside of the pin or
             # King is in check and piece destination is not in check_ray (blocking)
@@ -108,7 +110,7 @@ class MoveGenerator:
                 (self.in_check and not self.check_ray_mask & (1 << to_square)):
                     continue
             
-            move = from_square | (to_square << 6) | (piece_type << 12) | (color << 15)
+            move = from_square | (to_square << 6) | (piece_type << 12) | (color << 15) | (promotion_flag << 16)
             legal_moves.append(move)
         
         return legal_moves
