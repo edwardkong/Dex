@@ -1,6 +1,9 @@
 from movegenerator import MoveGenerator
 import moveorder
 import evaluate
+from transpositiontable import TranspositionTable, TTEntry
+
+
 class Search:
     def __init__(self, tt, eval_func=None):
         if eval_func is None:
@@ -12,6 +15,10 @@ class Search:
             alpha = float('-inf')
         if beta is None:
             beta = float('inf')
+
+        tp = self.tt.lookup_key(board.zobrist_key, depth)
+        if tp:
+            return tp.eval, None
 
         mg = MoveGenerator(board, color)
         legal_moves = mg.generate_moves()
@@ -37,17 +44,18 @@ class Search:
         if color == 0: # maximizing player
             max_eval = float('-inf')
             best_move = None
-            for move in ordered_moves:            
-                eval_score, _ = self.minimax_ab(board.simulate_move(move), 
-                                                depth - 1, 1, self.eval_func, 
-                                                alpha, beta)
+            for move in ordered_moves:
+                pos = board.sim_move(move)
+                eval, _ = self.minimax_ab(pos, depth - 1, 1, alpha, beta)
 
-                if eval_score > max_eval:
-                    max_eval = eval_score
+                entry = TTEntry(pos.zobrist_key, depth, eval)
+                self.tt.store_eval(entry)
+
+                if eval > max_eval:
+                    max_eval = eval
                     best_move = move
 
-                alpha = max(alpha, eval_score)
-
+                alpha = max(alpha, eval)
                 if beta < alpha:
                     break
             
@@ -57,17 +65,17 @@ class Search:
             min_eval = float('inf')
             best_move = None
             for move in ordered_moves:
-                eval_score, _ = self.minimax_ab(board.simulate_move(move), 
-                                                depth - 1, 0, self.eval_func, 
-                                                alpha, beta)
+                pos = board.sim_move(move)
+                eval, _ = self.minimax_ab(pos, depth - 1, 0, alpha, beta)
 
-                if eval_score < min_eval:
-                    min_eval = eval_score
+                entry = TTEntry(pos.zobrist_key, depth, eval)
+                self.tt.store_eval(entry)
+
+                if eval < min_eval:
+                    min_eval = eval
                     best_move = move
 
-                beta = min(beta, eval_score)
-
+                beta = min(beta, eval)
                 if beta < alpha:
                     break
-
             return min_eval, best_move

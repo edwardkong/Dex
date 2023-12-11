@@ -32,8 +32,8 @@ class UCI:
                         if parsed_command[2] == "moves":
                             if new_game.move_history == parsed_command[3:-1]:
                                 new_game.make_move(
-                                    tools.uci_to_int(parsed_command[-1]),
-                                    new_game.board.bitboards)
+                                    tools.uci_to_int(parsed_command[-1],
+                                    new_game.board.bitboards))
                             else:
                                 for move in parsed_command[3:]:
                                     given_move = tools.uci_to_int(

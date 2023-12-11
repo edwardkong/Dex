@@ -5,6 +5,7 @@ from transpositiontable import TranspositionTable
 import evaluate
 import tools
 
+import sys
 import time
 
 class GameState:
@@ -42,6 +43,10 @@ class GameState:
         else:
             searcher = Search(self.tt)
             eval, move = searcher.minimax_ab(self.board, self.depth, self.turn)
+
+        print(len(self.tt.entries))
+        print(sys.getsizeof(self.tt.entries))
+        print(sys.getsizeof(self.tt))
 
         return eval, move
 

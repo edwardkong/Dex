@@ -1,7 +1,7 @@
 from zobristhash import ZobristHash
 from transpositiontable import TranspositionTable
 import tools
-
+# implement zobrist key gen on board update + tt implementation
 class Board:
     # Board representing position of pieces
     def __init__(self, board=None):
@@ -66,8 +66,8 @@ class Board:
         return False
 
     def rook_update_castling(self, from_square, to_square):
-        """Updates castling by checking if a piece moves to or from
-        a rook's starting square.
+        """Updates castling rights by checking if a piece moves 
+        to or from a rook's starting square.
         """
         rook_castling_rights = {
             7: (1 << 0),
@@ -77,10 +77,23 @@ class Board:
         }
         # Check both in case rook takes rook
         if from_square in rook_castling_rights:
-            self.castling_rights &= ~rook_castling_rights[from_square]
+            self.castling_rights &= ~rook_castling_rights.get(from_square)
         if to_square in rook_castling_rights:
-            self.castling_rights &= ~rook_castling_rights[to_square]
-
+            self.castling_rights &= ~rook_castling_rights.get(to_square)
+    
+    def king_update_castling(self, to_square, color):
+        """Updates rook position and castling rights."""
+        # Stores rook's (from, to) squares, key as to_square
+        rook_move_squares = {
+            6: (7, 5), # White Kingside 0b0001
+            2: (0, 3), # White Queenside 0b0010
+            58: (56, 59), # Black Kingside 0b0100
+            62: (63, 61) # Black Queenside 0b1000
+        }
+        rook_from_square, rook_to_square = rook_move_squares.get(to_square)
+        self.remove_from_bitboard(3 + color * 6, rook_from_square)
+        self.add_to_bitboard(3 + color * 6, rook_to_square)
+        
     def piece_captured(self, from_square, to_square, color, piece_type=None):
         """Returns the piece_type (0-12) of the captured piece 
         if a piece was captured. Returns -1 if not a capture.
@@ -109,10 +122,12 @@ class Board:
     def remove_from_bitboard(self, piece_type, square):
         """Removes a piece from its bitboard. piece_type in range 0:12."""
         self.bitboards[piece_type] &= ~(1 << square)
+        self.zobrist_key ^= ZobristHash.table[square][piece_type]
 
     def add_to_bitboard(self, piece_type, square):
         """Adds a piece to its bitboard. piece_type in range 0:12."""
         self.bitboards[piece_type] |= (1 << square)
+        self.zobrist_key ^= ZobristHash.table[square][piece_type]
 
     def update_board(self, move):
         """Updates piece bitboards based on move as a 17-bit int."""
@@ -126,6 +141,11 @@ class Board:
         piece_type_color = piece_type + color * 6
         captured_piece = self.piece_captured(from_square, to_square, 
                                              color, piece_type)
+        
+        # Reset Zobrist Hash for color, castling, and ep
+        self.zobrist_key ^= ZobristHash.table[64]
+        self.zobrist_key ^= ZobristHash.table[65][self.castling_rights]
+        self.zobrist_key ^= ZobristHash.table[66][self.en_passant_flag]
 
         # Promotion
         if promotion_flag:
@@ -147,7 +167,7 @@ class Board:
                 self.remove_from_bitboard(captured_piece, to_square)
             self.remove_from_bitboard(piece_type_color, from_square)
             self.add_to_bitboard(piece_type_color, to_square)
-                    
+
         # Update en passant flag
         if (abs(from_square - to_square) == 16 and piece_type == 0):
             self.en_passant_flag = to_square % 8
@@ -159,16 +179,8 @@ class Board:
             if captured_piece > -1:
                 self.remove_from_bitboard(captured_piece, to_square)
             elif self.is_castling(from_square, to_square, piece_type):
-                # Stores rook's (from, to) squares, key as to_square
-                rook_move_squares = {
-                    6: (7, 5), # White Kingside 0b0001
-                    2: (0, 3), # White Queenside 0b0010
-                    58: (56, 59), # Black Kingside 0b0100
-                    62: (63, 61) # Black Queenside 0b1000
-                }
-                rook_from_square, rook_to_square = rook_move_squares[to_square]
-                self.remove_from_bitboard(3 + color * 6, rook_from_square)
-                self.add_to_bitboard(3 + color * 6, rook_to_square)
+                # Update rook position and castling rights
+                self.king_update_castling(to_square, color)
             self.remove_from_bitboard(piece_type_color, from_square)
             self.add_to_bitboard(piece_type_color, to_square)
             self.castling_rights &= (0b1100 >> (color * 2))
@@ -181,12 +193,16 @@ class Board:
             self.add_to_bitboard(piece_type_color, to_square)
 
         # Any piece moves from or to a rook's starting square
-        if set(from_square, to_square) & set((7, 0, 63, 56)):
-            self.rook_update_castling()
+        if (self.castling_rights and 
+            (from_square in (7, 0, 63, 56) or to_square in (7, 0, 63, 56))):
+            self.rook_update_castling(from_square, to_square)
+
+        self.zobrist_key ^= ZobristHash.table[65][self.castling_rights]
+        self.zobrist_key ^= ZobristHash.table[66][self.en_passant_flag]
 
         return self.bitboards
 
-    def simulate_move(self, move):
+    def sim_move(self, move):
         """Returns a copy of the updated board."""
         board_copy = self.copy_board()
         board_copy.update_board(move)
