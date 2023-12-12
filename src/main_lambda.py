@@ -8,7 +8,9 @@ import json
 import boto3
 
 def lambda_handler(event, context):
-    """AWS Lambda Handler function. This is the entry point defined in AWS Lambda."""
+    """AWS Lambda Handler function. 
+    This is the entry point defined in AWS Lambda.
+    """
     request_body = event.get('moves')
 
     new_lambda = LambdaUCI()
