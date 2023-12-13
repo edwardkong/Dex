@@ -1,7 +1,7 @@
 from movegenerator import MoveGenerator
 import moveorder
 import evaluate
-from transpositiontable import TranspositionTable, TTEntry
+from transpositiontable import TTEntry
 
 
 class Search:
@@ -48,7 +48,7 @@ class Search:
                 pos = board.sim_move(move)
                 eval, _ = self.minimax_ab(pos, depth - 1, 1, alpha, beta)
 
-                entry = TTEntry(pos.zobrist_key, depth, eval)
+                entry = TTEntry(pos.zobrist_key, depth, eval, pos.commits)
                 self.tt.store_eval(entry)
 
                 if eval > max_eval:
@@ -68,7 +68,7 @@ class Search:
                 pos = board.sim_move(move)
                 eval, _ = self.minimax_ab(pos, depth - 1, 0, alpha, beta)
 
-                entry = TTEntry(pos.zobrist_key, depth, eval)
+                entry = TTEntry(pos.zobrist_key, depth, eval, pos.commits)
                 self.tt.store_eval(entry)
 
                 if eval < min_eval:

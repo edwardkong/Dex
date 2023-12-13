@@ -12,6 +12,10 @@ class Board:
             self.castling_rights = board.castling_rights
             self.en_passant_flag = board.en_passant_flag
             self.zobrist_key = board.zobrist_key
+            # Count commital/irreversible moves such as
+            # pawn pushes or captures. Used for 
+            # age-based eviction in TranpositionTable.
+            self.commits = board.commits
         else:
             self.new_board()
 
@@ -26,6 +30,7 @@ class Board:
         self.initialize_castling()
         self.en_passant_flag = -1 # -1 for false, range(0, 8) for file
         self.zobrist_key = ZobristHash.create_hash_key(self)
+        self.commits = 0
 
     def initialize_bitboard(self):
         self.bitboards = [
@@ -141,6 +146,8 @@ class Board:
         piece_type_color = piece_type + color * 6
         captured_piece = self.piece_captured(from_square, to_square, 
                                              color, piece_type)
+        is_capture = captured_piece > -1
+        commital = is_capture
         
         # Reset Zobrist Hash for color, castling, and ep
         self.zobrist_key ^= ZobristHash.table[64]
@@ -152,10 +159,11 @@ class Board:
             # Piece_type contains the promotion piece if promotion_flag = 1
             promotion_piece = piece_type + color * 6
             piece_type = 0 + color * 6
-            if captured_piece > -1:
+            if is_capture:
                 self.remove_from_bitboard(captured_piece, to_square)
             self.remove_from_bitboard(piece_type, from_square)
             self.add_to_bitboard(promotion_piece, to_square)
+            commital = True
 
         # Pawn moves, non-promotion
         elif piece_type == 0:
@@ -163,10 +171,11 @@ class Board:
                 ep_square = self.is_en_passant(from_square, to_square, color)
                 if ep_square > -1:
                     self.remove_from_bitboard(captured_piece, ep_square)
-            elif captured_piece > -1:
+            elif is_capture:
                 self.remove_from_bitboard(captured_piece, to_square)
             self.remove_from_bitboard(piece_type_color, from_square)
             self.add_to_bitboard(piece_type_color, to_square)
+            commital = True
 
         # Update en passant flag
         if (abs(from_square - to_square) == 16 and piece_type == 0):
@@ -176,18 +185,19 @@ class Board:
 
         # King moves
         if piece_type == 5:
-            if captured_piece > -1:
+            if is_capture:
                 self.remove_from_bitboard(captured_piece, to_square)
             elif self.is_castling(from_square, to_square, piece_type):
                 # Update rook position and castling rights
                 self.king_update_castling(to_square, color)
+                commital = True
             self.remove_from_bitboard(piece_type_color, from_square)
             self.add_to_bitboard(piece_type_color, to_square)
             self.castling_rights &= (0b1100 >> (color * 2))
 
         # Piece moves
         if piece_type in (1, 2, 3, 4):
-            if captured_piece > -1:
+            if is_capture:
                 self.remove_from_bitboard(captured_piece, to_square)
             self.remove_from_bitboard(piece_type_color, from_square)
             self.add_to_bitboard(piece_type_color, to_square)
@@ -200,6 +210,9 @@ class Board:
         self.zobrist_key ^= ZobristHash.table[65][self.castling_rights]
         self.zobrist_key ^= ZobristHash.table[66][self.en_passant_flag]
 
+        if commital:
+            self.commits += 1
+
         return self.bitboards
 
     def sim_move(self, move):
@@ -210,6 +223,19 @@ class Board:
         board_copy.color = 1 - self.color
 
         return board_copy
+
+    def is_commital_move(self, move):
+        from_square = move & 0x3F  # Source square
+        to_square = (move >> 6) & 0x3F  # Destination square
+        piece_type = (move >> 12) & 0x7  # Piece type (0-5)
+        color = (move >> 15) & 0x1  # Color (0 for white, 1 for black)
+        promotion_flag = (move >> 16) & 0x1 # 1 if promotion
+
+        if self.piece_captured(from_square, to_square, color, piece_type) > -1:
+            return True
+        if piece_type == 0 or promotion_flag:
+            return True
+        return False
 
     def refresh_occupant_bitboards(self):
         """Returns occupants[] bitboards representing occupied squares.

@@ -51,11 +51,17 @@ class GameState:
         return eval, move
 
     def make_move(self, move):
+        commital = self.board.is_commital_move(move)
+
         self.board.make_move(move)
         self.turn = 1 - self.turn
         self.move += 1
         self.move_history.append(tools.int_to_uci(move))
+
         # Increase depth if endgame
         if self.move > 20:
             self.depth = evaluate.update_depth()
+            
+        if commital:
+            self.tt.evict_obsolete(self.board.commits)
         
