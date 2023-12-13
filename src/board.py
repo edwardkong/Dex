@@ -231,9 +231,11 @@ class Board:
         color = (move >> 15) & 0x1  # Color (0 for white, 1 for black)
         promotion_flag = (move >> 16) & 0x1 # 1 if promotion
 
+        if piece_type == 0 or promotion_flag:
+            return True
         if self.piece_captured(from_square, to_square, color, piece_type) > -1:
             return True
-        if piece_type == 0 or promotion_flag:
+        if self.is_castling(self, from_square, to_square, piece_type):
             return True
         return False
 

@@ -1,7 +1,9 @@
 from gamestate import GameState
 import tools
 import evaluate
+
 import gc
+import cProfile
 
 class UCI:
     def coms(self):
@@ -64,4 +66,4 @@ class UCI:
 
 if __name__ == "__main__":
     new_uci = UCI()
-    new_uci.coms()
+    cProfile.run(new_uci.coms())
