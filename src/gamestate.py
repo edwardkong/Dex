@@ -35,16 +35,17 @@ class GameState:
             start_time = time.time()
             elapsed_time_ms = (time.time() - start_time) * 1000
             
-            searcher = Search(self.tt)
-            eval, move = searcher.minimax_ab(self.board, self.depth, self.turn)
+            searcher = Search(self.tt, self.depth)
+            eval, move = searcher.start_search(self.board)
 
             if elapsed_time_ms < float(movetime):
                 time.sleep((float(movetime) - elapsed_time_ms) / 1000)
         else:
-            searcher = Search(self.tt)
-            eval, move = searcher.minimax_ab(self.board, self.depth, self.turn)
+            searcher = Search(self.tt, self.depth)
+            eval, move = searcher.start_search(self.board)
 
         print(len(self.tt.entries))
+        #print(self.tt.entries)
         print(sys.getsizeof(self.tt.entries))
         print(sys.getsizeof(self.tt))
 
@@ -61,7 +62,7 @@ class GameState:
         # Increase depth if endgame
         if self.move > 20:
             self.depth = evaluate.update_depth()
-            
+
         if commital:
             self.tt.evict_obsolete(self.board.commits)
         

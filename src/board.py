@@ -235,7 +235,7 @@ class Board:
             return True
         if self.piece_captured(from_square, to_square, color, piece_type) > -1:
             return True
-        if self.is_castling(self, from_square, to_square, piece_type):
+        if self.is_castling(from_square, to_square, piece_type):
             return True
         return False
 

@@ -4,6 +4,7 @@ import evaluate
 
 import gc
 import cProfile
+import pstats
 
 class UCI:
     def coms(self):
@@ -66,4 +67,13 @@ class UCI:
 
 if __name__ == "__main__":
     new_uci = UCI()
-    cProfile.run(new_uci.coms())
+    profiler = cProfile.Profile()
+    try:
+        profiler.enable()
+        cProfile.run(new_uci.coms())
+    except KeyboardInterrupt:
+        print("Keyboard Interrupt caught, ending profiling...")
+    finally:
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumulative')
+        stats.print_stats()
