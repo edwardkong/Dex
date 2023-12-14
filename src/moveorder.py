@@ -1,4 +1,3 @@
-import board
 def capture_priority(board, move, color):
 
     from_square = move & 0x3F  # Source square
