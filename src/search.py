@@ -39,7 +39,8 @@ class Search:
                 return 0.0, None
         # Terminal position needs to be checked before depth == 0
         if depth == 0:
-            return self.eval_func(board), None
+            return self.quiescence_search(board, alpha, beta), None
+            # return self.eval_func(board)
 
         if color == 0: # maximizing player
             max_eval = float('-inf')
@@ -94,6 +95,27 @@ class Search:
 
             entry = TTEntry(board.zobrist_key, depth, eval, board.commits)
             self.tt.store_eval(entry)
+
+    def quiescence_search(self, board, alpha, beta):
+        stand_pat = self.eval_func(board)  # Static evaluation of the current position
+        if stand_pat >= beta:
+            return beta
+        if alpha < stand_pat:
+            alpha = stand_pat
+
+        mg = MoveGenerator(board, board.color)
+        legal_moves = mg.generate_moves(captures_only=True)
+
+        for move in legal_moves:
+            pos = board.sim_move(move)
+            eval = self.quiescence_search(pos, alpha, beta)
+
+            if eval >= beta:
+                return beta
+            if eval > alpha:
+                alpha = eval
+
+        return alpha
 
     def order_moves(self, board, move, depth):
         # Get PV

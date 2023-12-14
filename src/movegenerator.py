@@ -21,18 +21,14 @@ class MoveGenerator:
         self.generate_attacked_ray_mask()
         self.calculate_attacks_on_king()
 
-    def generate_moves(self):
+    def generate_moves(self, captures_only=False):
         """Returns all moves for all pieces in position for a color."""
         self.moves.extend(self.generate_king_moves())
         # Only the king can move in double check
-        if self.double_check:
-            return self.moves
-        
-        else:
+        if not self.double_check:
             # Iterate through all pieces of the given color
             for piece_type in range(5):
                 pieces = self.board.bitboards[piece_type + self.color * 6]
-
                 while pieces:
                     # Find the index of the least significant set bit (LSB)
                     from_square = tools.bitscan_lsb(pieces)
@@ -41,8 +37,13 @@ class MoveGenerator:
                                                                 from_square))
                     # Clear the LSB to move to the next piece
                     pieces &= pieces - 1
-        
-            return self.moves
+
+        # Only return captures. Used for quiescence search.
+        if captures_only:
+            self.moves = [move for move in self.moves
+                          if (self.board.occupants[1 - self.color] & 
+                              (1 << ((move >> 6) & 0x3F)))]
+        return self.moves
 
     def generate_king_moves(self):
         """Returns list of legal king moves."""
