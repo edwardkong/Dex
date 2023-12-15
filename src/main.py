@@ -75,5 +75,5 @@ if __name__ == "__main__":
         print("Keyboard Interrupt caught, ending profiling...")
     finally:
         profiler.disable()
-        stats = pstats.Stats(profiler).sort_stats('cumulative')
+        stats = pstats.Stats(profiler).sort_stats('tot')
         stats.print_stats()

@@ -1,5 +1,4 @@
 from movegenerator import MoveGenerator
-import moveorder
 import evaluate
 from transpositiontable import TTEntry
 

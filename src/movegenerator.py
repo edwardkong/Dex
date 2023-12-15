@@ -370,6 +370,79 @@ class MoveGenerator:
 
         return candidate
 
+    def generate_sliding_moves_v2(self, from_square, piece_type):
+        """generate all moves from the piece using bitmasks.
+        & it with the occupancy. this will return only squares which
+        are occupied and in the direction of the piece scope.
+        find the closest one in each direction.
+        for rook moves:
+        min rank, file where rank, file > square
+        max rank, file where rank, file < square
+        if ever one is equal to square file/rank
+        means no moves in that direction
+        for diagonals:
+        two masks, one for each diagonal.
+        for each:
+        min occupant > square and max occupant < square
+        """
+        candidate = []
+        move_mask = 0
+        rank, file = divmod(from_square, 8)
+        straight = (piece_type == 3) or (piece_type == 4)
+        diag = (piece_type == 2) or (piece_type == 4)
+
+        horizontal_mask = 0xFF
+        vertical_mask = 0x0101010101010101
+
+        if straight:
+            # Horizontal moves
+            rank_mask = (horizontal_mask << (8 * rank))
+
+            # Pieces along the rank
+            rank_pieces = rank_mask & self.board.occupants[2]
+            if file == 0:
+                left_mask = 0
+            else:
+                # Isolate the squares left of our piece
+                left_mask = ((1 << file) - 1 << 8 * rank)
+            left_pieces = rank_pieces & left_mask
+            if left_pieces:
+                # The closest piece to ours on the left will block
+                closest_left = left_pieces.bit_length() - 1
+                # If that piece is the opponent's, we can capture
+                if self.board.occupants[1 - self.color] & (1 << closest_left):
+                    candidate.append(closest_left) 
+                    # candidate.append((closest_left, 1))
+            else:
+                closest_left = -1
+            # Include the squares from our piece to the blocker
+            rank_moves = left_mask & (left_mask << (closest_left + 1))
+
+            file_pieces = file_mask & self.board.occupants[2]
+            if file == 7:
+                right_mask = 0
+            else:
+                right_mask = (~((1 << (file + 1)) - 1) << (8 * rank))
+            right_pieces = rank_pieces & right_mask
+            if right_pieces:
+                closest_right = (right_pieces & -right_pieces).bit_length() - 1 
+                if self.board.occupants[1 - self.color] & (1 << closest_right):
+                    candidate.append(closest_right) 
+                    # candidate.append((closest_right, 1))
+            else:
+                closest_right = -1
+            rank_moves |= (right_mask & ((1 << closest_right) - 1))
+
+            moves_mask |= rank_moves
+
+            # Vertical moves
+            file_mask = (vertical_mask << 8)
+            file_pieces = (file_mask << (8 * file)) & self.board.occupants[2]
+
+
+
+
+
     def generate_sliding_moves(self, from_square, piece_type):
         """Returns psuedo legal moves for sliding pieces, 
         including captures. 
