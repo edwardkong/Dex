@@ -1,6 +1,7 @@
 from gamestate import GameState
 import tools
 import evaluate
+import precompute
 
 import gc
 import cProfile
@@ -67,6 +68,7 @@ class UCI:
 
 if __name__ == "__main__":
     new_uci = UCI()
+    #new_uci.coms()
     profiler = cProfile.Profile()
     try:
         profiler.enable()

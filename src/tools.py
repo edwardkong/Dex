@@ -115,7 +115,7 @@ def print_bitboard(bb_int):
     bits = bin(bb_int)
     bits = '0' * (66 - len(bits)) + bits[2:]
     for x in range(8):
-        print(bits[i:i+7])
+        print(bits[i:i+8])
         i -= 8
 
 # Standard UCI move notation includes 4 characters, source square and destination square. 
@@ -137,13 +137,13 @@ def uci_to_int(lan_move, bitboards):
 
     # Determine the piece type & color
     for piece_color in range(12):
-        color = piece_color & 1
-        piece_type = piece_color >> 1
+        color = piece_color // 6
+        piece_type = piece_color % 6
 
-        if (bitboards[piece_type + color*6] & (1 << from_index)):
+        if (bitboards[piece_color] & (1 << from_index)):
             break
     else:
-        print("Invalid move: No piece found on the source square.")
+        print(f"Invalid move: No piece found on the source square for {lan_move}")
         return None
 
     # Consider if the move is a promotion
@@ -152,7 +152,11 @@ def uci_to_int(lan_move, bitboards):
         piece_type = promotion_mapping.get(promotion.lower(), 0)
     
     # Generate the move as a 32-bit integer
-    return from_index | (to_index << 6) | (piece_type << 12) | (color << 15)
+    return (from_index | 
+            (to_index << 6) | 
+            (piece_type << 12) | 
+            (color << 15) | 
+            ((1 if promotion else 0) << 16))
 
 def int_to_uci(move):
     from_square = move & 0x3F  # Source square

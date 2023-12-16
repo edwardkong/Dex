@@ -75,6 +75,10 @@ KING_TABLE = [
     20, 30, 10,  0,  0, 10, 30, 20
 ] # Middle / Early Game, need implementation for end game
 
+KING_TABLE_END = [
+    
+]
+
 def evaluate_board(board):
     evaluation = 0
 
@@ -144,7 +148,70 @@ def update_depth(gamestate):
             pieces_remaining_score += num_pieces * QUEEN_VALUE
     
     if pieces_remaining_score <= 1200:
-        return 6
+        return 5
     
     else:
-        return 4
+        return 3
+    
+def is_position_quiet(board):
+    DIRECTIONS = [
+            (1, 1), (1, -1), (-1, 1), (-1, -1),
+            (1, 0), (-1, 0), (0, 1), (0, -1)
+            ]
+    KNIGHT_JUMPS = [
+        (2, 1), (1, 2), (-2, 1), (-1, 2),
+        (2, -1), (1, -2), (-2, -1), (-1, -2)
+    ]
+
+    color = board.color
+    pieces = board.occupants[color]
+    while pieces:
+        piece_square = tools.bitscan_lsb(pieces)
+        rank, file = divmod(piece_square, 8)
+
+        for k in KNIGHT_JUMPS:
+            new_rank, new_file = rank + k[0], file + k[1]
+            while (0 <= new_rank < 8 and 0 <= new_file < 8):
+                new_square = 8 * new_rank + new_file
+                if board.bitboards[1 + (1 - color) * 6] & (1 << new_square):
+                    return False
+                new_rank += k[0]
+                new_file += k[1]
+                
+        if color:
+            if board.bitboards[0] & (1 << (piece_square - 9)):
+                if file != 7:
+                    return False
+            if board.bitboards[0] & (1 << (piece_square - 7)):
+                if file != 0:
+                    return False
+        else:
+            if board.bitboards[6] & (1 << (piece_square + 7)):
+                if file != 7:
+                    return False
+            if board.bitboards[6] & (1 << (piece_square + 9)):
+                if file != 0:
+                    return False
+                    
+        for d in DIRECTIONS:
+            new_rank, new_file = rank + d[0], file + d[1]
+            while (0 <= new_rank < 8 and 0 <= new_file < 8):
+                new_square = 8 * new_rank + new_file
+                if board.occupants[color] & (1 << new_square):
+                    break
+                if board.occupants[1 - color] & (1 << new_square):
+                    if (board.bitboards[4 + (1 - color) * 6] & (1 << new_square)):
+                        return False
+                    if ((board.bitboards[2 + (1 - color) * 6] & (1 << new_square)) and
+                        abs(d[0]) == abs(d[1])):
+                        return False
+                    if ((board.bitboards[3 + (1 - color) * 6] & (1 << new_square)) and
+                        (not d[0] or not d[1])):
+                        return False
+                    else:
+                        break
+                new_rank += d[0]
+                new_file += d[1]
+        pieces &= pieces - 1
+    return True
+    
