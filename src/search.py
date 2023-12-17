@@ -69,11 +69,6 @@ class Search:
                 
                 pos = board.sim_move(move)
                 eval, _ = self.minimax_ab(pos, depth - 1, 1, alpha, beta, capture_flag)
-                f.write("maximizing\n")
-                if depth == 4:
-                    print(f"depth: {depth} - move: {tools.int_to_uci(move)} - eval: {eval}\n")
-                f.write(f"depth: {depth} - move: {tools.int_to_uci(move)} - eval: {eval}\n")
-
 
                 entry = TTEntry(pos.zobrist_key, depth - 1, eval, pos.commits)
                 self.tt.store_eval(entry)
@@ -94,11 +89,6 @@ class Search:
                 capture_flag = (move >> 17) & 0x1
                 pos = board.sim_move(move)
                 eval, _ = self.minimax_ab(pos, depth - 1, 0, alpha, beta, capture_flag)
-                f.write("minimizing\n")
-                if depth == 4:
-                    print(f"depth: {depth} - move: {tools.int_to_uci(move)} - eval: {eval}\n")
-                f.write(f"depth: {depth} - move: {tools.int_to_uci(move)} - eval: {eval}\n")
-
 
                 entry = TTEntry(pos.zobrist_key, depth - 1, eval, pos.commits)
                 self.tt.store_eval(entry)

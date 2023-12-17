@@ -16,6 +16,7 @@ class GameState:
             self.board = board
         self.tt = TranspositionTable()
         self.depth = 4
+        self.phase = 0
         self.eval_func = evaluate.evaluate_board
 
     def newGameUCI(self, moves=None):
@@ -62,7 +63,7 @@ class GameState:
 
         # Increase depth if endgame
         if self.move > 2:
-            self.depth = evaluate.update_depth(self)
+            self.depth, self.phase = evaluate.update_depth(self)
 
         if commital:
             self.tt.evict_obsolete(self.board.commits)

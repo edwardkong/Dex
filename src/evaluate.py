@@ -97,6 +97,8 @@ KING_TABLE_END = [
     -50, -30, -30, -30, -30, -30, -30, -50
 ]
 
+GAME_PHASE = 0
+
 def push_king(board):
     enemy_king_square = tools.bitscan_lsb(board.bitboards[5 + (1 - board.color)*6])
     e_rank, e_file = divmod(enemy_king_square, 8)
@@ -109,34 +111,15 @@ def push_king(board):
 def evaluate_board(board):
     evaluation = 0
     turn = board.color
-
-    # Piece values
-    pieces_remaining_score = 0
-    for piece_type in range(5):
-        num_pieces = bin(board.bitboards[piece_type + turn * 6]).count('1')
-        if piece_type == 0:
-            pieces_remaining_score += num_pieces * PAWN_VALUE
-
-        elif piece_type == 1:
-            pieces_remaining_score += num_pieces * KNIGHT_VALUE
-
-        elif piece_type == 2:
-            pieces_remaining_score += num_pieces * BISHOP_VALUE
-
-        elif piece_type == 3:
-            pieces_remaining_score += num_pieces * ROOK_VALUE
-
-        elif piece_type == 4:
-            pieces_remaining_score += num_pieces * QUEEN_VALUE
     
-    if abs(pieces_remaining_score) <= 1200:
+    if GAME_PHASE >= 2:
         pawn_table_gamestate = PAWN_TABLE_END
         king_table_gamestate = KING_TABLE_END
     else:
         pawn_table_gamestate = PAWN_TABLE
         king_table_gamestate = KING_TABLE
 
-    if abs(pieces_remaining_score) < 300:
+    if GAME_PHASE == 3:
         evaluation += (push_king(board) * 15 * (-1 if turn else 1))
 
     for piece in range(12):
@@ -185,7 +168,8 @@ def evaluate_board(board):
 
 def update_depth(gamestate):
     color = gamestate.turn
-
+    depth = gamestate.depth
+    phase = 0 #0: early, 1: mid, 2: late, 3: end
     pieces_remaining_score = 0
 
     for piece_type in range(5):
@@ -206,11 +190,21 @@ def update_depth(gamestate):
         elif piece_type == 4:
             pieces_remaining_score += num_pieces * QUEEN_VALUE
     
-    if pieces_remaining_score <= 1000:
-        return 6
-    
+    if pieces_remaining_score <= 300:
+        depth = 4
+        phase = 3
+    elif pieces_remaining_score <= 1000:
+        depth = 6
+        phase = 2
+    elif pieces_remaining_score <= 1200:
+        depth = 6
+        phase = 1
     else:
-        return 4
+        depth = 4
+        phase = 0
+    
+    GAME_PHASE = phase
+    return depth, phase
     
 def is_position_quiet(board):
     DIRECTIONS = [
