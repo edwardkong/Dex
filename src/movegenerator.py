@@ -173,10 +173,13 @@ class MoveGenerator:
 
         for to_square in candidate:
             promotion_flag = 0
+            capture_flag = 0
             if type(to_square) == str:
                 piece_type = tools.char_to_int_piece(to_square[-1])
                 to_square = int(to_square[:-1])
                 promotion_flag = 1
+            if self.board.occupants[1 - color] & (1 << to_square):
+                capture_flag = 1 # Doesn't consider EP
 
             # Piece is pinned and destination is outside of the pin or
             # King is in check and piece destination is not blocking
@@ -190,7 +193,8 @@ class MoveGenerator:
                     | (to_square << 6) 
                     | (piece_type << 12) 
                     | (color << 15) 
-                    | (promotion_flag << 16))
+                    | (promotion_flag << 16)
+                    | (capture_flag << 17))
             legal_moves.append(move)
         
         return legal_moves

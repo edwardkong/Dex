@@ -1,11 +1,11 @@
 import tools
 
 # Piece values
-PAWN_VALUE = 100
-KNIGHT_VALUE = 320
-BISHOP_VALUE = 330
-ROOK_VALUE = 500
-QUEEN_VALUE = 900
+PAWN_VALUE = 101
+KNIGHT_VALUE = 316
+BISHOP_VALUE = 329
+ROOK_VALUE = 494
+QUEEN_VALUE = 903
 KING_VALUE = 20000
 
 # Piece square tables (these are simple tables and not optimized for real use)
@@ -13,11 +13,22 @@ PAWN_TABLE = [
      0,  0,  0,  0,  0,  0,  0,  0,
      50, 50, 50, 50, 50, 50, 50, 50,
      10, 10, 20, 35, 35, 20, 10, 10,
-     5,  5, 10, 30, 30, 10,  5,  5,
-     0,  0,  0, 25, 25,  0,  0,  0,
-     5, -5,-10,  0,  0,-10, -5,  5,
-     5, 10, 10,-25,-25, 10, 10,  5,
+     5,  5, 10, 27, 27, 10,  5,  5,
+     0,  0,  0, 23, 23,  0,  0,  0,
+     7, -4,-10,  0,  0,-10, -4,  7,
+     6, 11, 13,-23,-23, 13, 11,  6,
      0,  0,  0,  0,  0,  0,  0,  0
+]
+
+PAWN_TABLE_END = [
+    0,   0,   0,   0,   0,   0,   0,   0,
+    80,  80,  80,  80,  80,  80,  80,  80,
+    50,  50,  50,  50,  50,  50,  50,  50,
+    30,  30,  30,  30,  30,  30,  30,  30,
+    20,  20,  20,  20,  20,  20,  20,  20,
+    10,  10,  10,  10,  10,  10,  10,  10,
+    10,  10,  10,  10,  10,  10,  10,  10,
+    0,   0,   0,   0,   0,   0,   0,   0
 ]
 
 KNIGHT_TABLE = [
@@ -38,7 +49,7 @@ BISHOP_TABLE = [
     -10,  5,  5, 10, 10,  5,  5,-10,
     -10,  0, 10, 10, 10, 10,  0,-10,
     -10, 10, 10, 10, 10, 10, 10,-10,
-    -10,  5,  0,  0,  0,  0,  5,-10,
+    -10, 11,  0,  0,  0,  0, 11,-10,
     -20,-10,-10,-10,-10,-10,-10,-20
 ]
 
@@ -76,28 +87,71 @@ KING_TABLE = [
 ] # Middle / Early Game, need implementation for end game
 
 KING_TABLE_END = [
-
+    -20, -10, -10, -10, -10, -10, -10, -20,
+    -5,   0,   5,   5,   5,   5,   0,  -5,
+    -10, -5,   20,  30,  30,  20,  -5, -10,
+    -15, -10,  35,  45,  45,  35, -10, -15,
+    -20, -15,  30,  40,  40,  30, -15, -20,
+    -25, -20,  20,  25,  25,  20, -20, -25,
+    -30, -25,   0,   0,   0,   0, -25, -30,
+    -50, -30, -30, -30, -30, -30, -30, -50
 ]
+
+def push_king(board):
+    enemy_king_square = tools.bitscan_lsb(board.bitboards[5 + (1 - board.color)*6])
+    e_rank, e_file = divmod(enemy_king_square, 8)
+
+    rank_score = abs(e_rank * 2 - 7)
+    file_score = abs(e_file * 2 - 7)
+
+    return rank_score + file_score
 
 def evaluate_board(board):
     evaluation = 0
+    turn = board.color
 
     # Piece values
+    pieces_remaining_score = 0
+    for piece_type in range(5):
+        num_pieces = bin(board.bitboards[piece_type + turn * 6]).count('1')
+        if piece_type == 0:
+            pieces_remaining_score += num_pieces * PAWN_VALUE
+
+        elif piece_type == 1:
+            pieces_remaining_score += num_pieces * KNIGHT_VALUE
+
+        elif piece_type == 2:
+            pieces_remaining_score += num_pieces * BISHOP_VALUE
+
+        elif piece_type == 3:
+            pieces_remaining_score += num_pieces * ROOK_VALUE
+
+        elif piece_type == 4:
+            pieces_remaining_score += num_pieces * QUEEN_VALUE
+    
+    if abs(pieces_remaining_score) <= 1200:
+        pawn_table_gamestate = PAWN_TABLE_END
+        king_table_gamestate = KING_TABLE_END
+    else:
+        pawn_table_gamestate = PAWN_TABLE
+        king_table_gamestate = KING_TABLE
+
+    if abs(pieces_remaining_score) < 300:
+        evaluation += (push_king(board) * 15 * (-1 if turn else 1))
 
     for piece in range(12):
         piece_type = piece % 6
         color = piece // 6
-        pieces = board.bitboards[piece]
+        pieces = board.bitboards[piece]          
+        sign = -1 if color else 1  
 
         while pieces:
-            # Find the index of the least significant set bit (LSB)
             square = tools.bitscan_lsb(pieces) 
             if not color:
                 square = (63 - square)
-            sign = -1 if color else 1
             if piece_type == 0:
                 evaluation += ((sign * PAWN_VALUE)
-                               + (sign * PAWN_TABLE[square]))
+                               + (sign * pawn_table_gamestate[square]))
 
             elif piece_type == 1:
                 evaluation += ((sign * KNIGHT_VALUE)
@@ -117,13 +171,15 @@ def evaluate_board(board):
 
             elif piece_type == 5:
                 evaluation += ((sign * KING_VALUE)
-                               + (sign * KING_TABLE[square]))
+                               + (sign * king_table_gamestate[square]))
 
             # Clear the LSB to move to the next piece
             pieces &= pieces - 1
         
-    if board.castling_rights & (0b11 << (board.color * 2)):
-        evaluation += (5 if color else -5)
+    if board.castling_rights & 0b1100:
+        evaluation -= 8
+    if board.castling_rights & 0b11:
+        evaluation += 8
 
     return evaluation
 
@@ -150,11 +206,11 @@ def update_depth(gamestate):
         elif piece_type == 4:
             pieces_remaining_score += num_pieces * QUEEN_VALUE
     
-    if pieces_remaining_score <= 1200:
-        return 4
+    if pieces_remaining_score <= 1000:
+        return 6
     
     else:
-        return 3
+        return 4
     
 def is_position_quiet(board):
     DIRECTIONS = [
