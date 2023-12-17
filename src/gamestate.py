@@ -16,6 +16,7 @@ class GameState:
             self.board = board
         self.tt = TranspositionTable()
         self.depth = 4
+        self.phase = 0
         self.eval_func = evaluate.evaluate_board
 
     def newGameUCI(self, moves=None):
@@ -44,12 +45,13 @@ class GameState:
             searcher = Search(self.tt, self.depth)
             eval, move = searcher.start_search(self.board)
 
+        return eval, move
+        """
         print(len(self.tt.entries))
         #print(self.tt.entries)
         print(sys.getsizeof(self.tt.entries))
         print(sys.getsizeof(self.tt))
-
-        return eval, move
+        """
 
     def make_move(self, move):
         commital = self.board.is_commital_move(move)
@@ -60,9 +62,14 @@ class GameState:
         self.move_history.append(tools.int_to_uci(move))
 
         # Increase depth if endgame
-        if self.move > 20:
-            self.depth = evaluate.update_depth()
+        if self.move > 2:
+            self.depth, self.phase = evaluate.update_depth(self)
 
         if commital:
             self.tt.evict_obsolete(self.board.commits)
         
+
+        # position startpos moves d2d4 d7d5 c1g5 g8f6 h2h4 c8g4 c2c4 d5c4 g5f6 e7f6 b1c3 b8c6 d1b3 c4b3    
+        # position startpos moves d2d4 a7a6 c1f4 d7d6 g1f3 b8c6 e2e3 e7e6 c2c4 d8d7 f1d3 b7b6 e1g1 a6a5 b1c3 f7f6 a1c1 e8d8 a2a3 d8e7 c3b5 e7d8 d4d5
+        # position startpos moves d2d4 b8c6 c1f4 d7d5 e2e3 c8f5 g1f3 g8f6 c2c4 d5c4 f1c4 e7e6 b1c3 f8b4 e1g1 b4c3 b2c3 e8g8 d1b3 a8b8 f1d1 f6e4 c4d3 g8h8 b3c2
+        # position startpos moves d2d4 d7d5 c1f4 b8c6 e2e3 g8f6 f1d3 c8g4 g1f3

@@ -1,6 +1,7 @@
 from gamestate import GameState
 import tools
 import evaluate
+import precompute
 
 import gc
 import cProfile
@@ -67,6 +68,7 @@ class UCI:
 
 if __name__ == "__main__":
     new_uci = UCI()
+    #new_uci.coms()
     profiler = cProfile.Profile()
     try:
         profiler.enable()
@@ -75,5 +77,5 @@ if __name__ == "__main__":
         print("Keyboard Interrupt caught, ending profiling...")
     finally:
         profiler.disable()
-        stats = pstats.Stats(profiler).sort_stats('cumulative')
+        stats = pstats.Stats(profiler).sort_stats('tot')
         stats.print_stats()

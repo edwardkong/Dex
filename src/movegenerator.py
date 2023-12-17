@@ -1,4 +1,5 @@
 import tools, scope
+import precompute
 
 DIRECTIONS = [
         (1, 1), (1, -1), (-1, 1), (-1, -1),
@@ -6,9 +7,9 @@ DIRECTIONS = [
         ]
 
 class MoveGenerator:
-    def __init__(self, board, color):
+    def __init__(self, board):
         self.board = board
-        self.color = color
+        self.color = board.color
         self.pinned_ray_mask = 0
         self.attacked_jump_mask = 0
         self.check_ray_mask = 0
@@ -16,12 +17,12 @@ class MoveGenerator:
         self.double_check = False
         self.moves = []
         self.attacked_ray_mask = 0
-        self.king_square = tools.bitscan_lsb(board.bitboards[5 + color * 6])
+        self.king_square = tools.bitscan_lsb(board.bitboards[5 + self.color * 6])
 
         self.generate_attacked_ray_mask()
         self.calculate_attacks_on_king()
 
-    def generate_moves(self, captures_only=False):
+    def generate_moves(self):
         """Returns all moves for all pieces in position for a color."""
         self.moves.extend(self.generate_king_moves())
         # Only the king can move in double check
@@ -38,12 +39,40 @@ class MoveGenerator:
                     # Clear the LSB to move to the next piece
                     pieces &= pieces - 1
 
-        # Only return captures. Used for quiescence search.
-        if captures_only:
-            self.moves = [move for move in self.moves
-                          if (self.board.occupants[1 - self.color] & 
-                              (1 << ((move >> 6) & 0x3F)))]
         return self.moves
+
+    def generate_forcing_moves(self):
+        self.moves.extend(self.generate_king_captures())
+        if not self.double_check:
+            for piece_type in range(5):
+                pieces = self.board.bitboards[piece_type + self.color * 6]
+                while pieces:
+                    from_square = tools.bitscan_lsb(pieces)
+                    self.moves.extend(self.generate_piece_captures(piece_type,
+                                                                from_square))
+                    pieces &= pieces - 1
+        return self.moves
+
+    def generate_king_captures(self):
+        candidate = []
+        from_square = self.king_square
+        color = self.color
+        rank = from_square // 8
+        file = from_square % 8
+
+        for d in DIRECTIONS:
+            new_rank, new_file = rank + d[0], file + d[1]
+            new_square = 8 * new_rank + new_file
+
+            if 0 <= new_rank < 8 and 0 <= new_file < 8:
+                if self.board.occupants[1 - color] & (1 << new_square): 
+                    if (not (self.attacked_jump_mask & (1 << new_square))):
+                        if (not (self.attacked_ray_mask & (1 << new_square))):
+                            candidate.append(from_square 
+                                             | (new_square << 6) 
+                                             | (5 << 12) 
+                                             | (color << 15))
+        return candidate
 
     def generate_king_moves(self):
         """Returns list of legal king moves."""
@@ -85,24 +114,21 @@ class MoveGenerator:
 
         return candidate      
     
-    def generate_piece_moves(self, piece_type, from_square):
-        """Returns legal moves for each non-king piece."""        
+    def generate_piece_captures(self, piece_type, from_square):
         candidate = []
         legal_moves = []
         color = self.color
 
         if piece_type == 0:
-            candidate.extend(self.generate_pawn_push(from_square))
             candidate.extend(self.generate_pawn_captures(from_square))
-            candidate.extend(self.generate_pawn_ep(from_square))
 
         elif piece_type == 1:
-            candidate.extend(self.generate_knight_moves(from_square))
+            candidate.extend(self.generate_knight_captures(from_square))
 
         elif piece_type in (2, 3, 4):
-            candidate.extend(self.generate_sliding_moves(from_square, 
+            candidate.extend(self.generate_sliding_captures(from_square, 
                                                          piece_type))
-
+            
         for to_square in candidate:
             promotion_flag = 0
             if type(to_square) == str:
@@ -123,6 +149,52 @@ class MoveGenerator:
                     | (piece_type << 12) 
                     | (color << 15) 
                     | (promotion_flag << 16))
+            legal_moves.append(move)
+        
+        return legal_moves
+
+    def generate_piece_moves(self, piece_type, from_square):
+        """Returns legal moves for each non-king piece."""        
+        candidate = []
+        legal_moves = []
+        color = self.color
+
+        if piece_type == 0:
+            candidate.extend(self.generate_pawn_push(from_square))
+            candidate.extend(self.generate_pawn_captures(from_square))
+            candidate.extend(self.generate_pawn_ep(from_square))
+
+        elif piece_type == 1:
+            candidate.extend(self.generate_knight_moves(from_square))
+
+        elif piece_type in (2, 3, 4):
+            candidate.extend(self.generate_sliding_moves(from_square, 
+                                                         piece_type))
+
+        for to_square in candidate:
+            promotion_flag = 0
+            capture_flag = 0
+            if type(to_square) == str:
+                piece_type = tools.char_to_int_piece(to_square[-1])
+                to_square = int(to_square[:-1])
+                promotion_flag = 1
+            if self.board.occupants[1 - color] & (1 << to_square):
+                capture_flag = 1 # Doesn't consider EP
+
+            # Piece is pinned and destination is outside of the pin or
+            # King is in check and piece destination is not blocking
+            if ((self.pinned_ray_mask & (1 << from_square) and 
+                not self.is_moving_along_pin(from_square, to_square)) or 
+                (self.in_check and 
+                 not self.check_ray_mask & (1 << to_square))):
+                    continue
+            
+            move = (from_square 
+                    | (to_square << 6) 
+                    | (piece_type << 12) 
+                    | (color << 15) 
+                    | (promotion_flag << 16)
+                    | (capture_flag << 17))
             legal_moves.append(move)
         
         return legal_moves
@@ -356,6 +428,15 @@ class MoveGenerator:
 
         return candidate
 
+    def generate_knight_captures(self, from_square):
+        candidate = []
+        knight_scope = scope.generate_knight_scope(from_square)
+        for square in knight_scope:
+            if self.board.occupants[1 - self.color] & (1 << square):
+                candidate.append(square)
+
+        return candidate
+
     def generate_knight_moves(self, from_square):
         """Returns psuedo legal knight moves."""
         candidate = []
@@ -371,6 +452,51 @@ class MoveGenerator:
         return candidate
 
     def generate_sliding_moves(self, from_square, piece_type):
+        candidate = []
+        move_mask = 0
+        rank, file = divmod(from_square, 8)
+
+        if (piece_type == 3) or (piece_type == 4):
+            horizontal_mask = 0xFF
+            vertical_mask = 0x0101010101010101
+            # Horizontal moves
+            rank_mask = (horizontal_mask << (8 * rank))
+            # Pieces along the rank
+            rank_pieces = (rank_mask & self.board.occupants[2]) >> (8 * rank)
+            # Lookup precomputed moves
+            rank_moves = precompute.sliding_moves.rank[(file, rank_pieces)] << (8 * rank)
+            move_mask |= rank_moves
+            
+            # Vertical moves
+            file_mask = (vertical_mask << file)
+            file_pieces = (file_mask & self.board.occupants[2]) >> file
+            file_moves = precompute.sliding_moves.file[(rank, file_pieces)] << (file)
+
+            move_mask |= file_moves
+
+        if (piece_type == 2) or (piece_type == 4):
+            diagonal_mask = precompute.sliding_moves.diag_lookup[from_square]
+            anti_diagonal_mask = precompute.sliding_moves.a_diag_lookup[from_square]
+            # Diagonal moves
+            diag_pieces = diagonal_mask & self.board.occupants[2]
+            diag_moves = precompute.sliding_moves.diagonal[(from_square, diag_pieces)]
+            
+            move_mask |= diag_moves
+
+            # Anti-diagonal moves
+            a_diag_pieces = anti_diagonal_mask & self.board.occupants[2]
+            a_diag_moves = precompute.sliding_moves.anti_diagonal[(from_square, a_diag_pieces)]
+
+            move_mask |= a_diag_moves
+
+        move_mask &= ~(self.board.occupants[self.color])
+        while move_mask:
+            to_square = tools.bitscan_lsb(move_mask)
+            candidate.append(to_square)
+            move_mask &= move_mask - 1
+        return candidate
+
+    def generate_sliding_moves2(self, from_square, piece_type):
         """Returns psuedo legal moves for sliding pieces, 
         including captures. 
         piece_type -> {2: Bishop, 3: Rook, 4: Queen}
@@ -401,6 +527,29 @@ class MoveGenerator:
 
         return candidate
     
+    def generate_sliding_captures(self, from_square, piece_type):
+        candidate = []
+        rank, file = divmod(from_square, 8)
+
+        start = 0 if (piece_type == 2) or (piece_type == 4) else 4
+        end = 8 if (piece_type == 3) or (piece_type == 4) else 4
+        
+        for d in DIRECTIONS[start:end]:
+            new_rank, new_file = rank + d[0], file + d[1]
+
+            while 0 <= new_rank < 8 and 0 <= new_file < 8:
+                new_square = 8 * new_rank + new_file
+                if self.board.occupants[self.color] & (1 << new_square):
+                    break
+                if self.board.occupants[1 - self.color] & (1 << new_square):
+                    candidate.append(new_square)
+                    break
+
+                new_rank += d[0] 
+                new_file += d[1]
+
+        return candidate
+
     def generate_sliding_scope(self, from_square, color, piece_type):
         """
         Takes a board's occupants.

@@ -142,6 +142,7 @@ class Board:
         piece_type = (move >> 12) & 0x7  # Piece type (0-5)
         color = (move >> 15) & 0x1  # Color (0 for white, 1 for black)
         promotion_flag = (move >> 16) & 0x1 # 1 if promotion
+        capture_flag = (move >> 17) & 0x1
 
         piece_type_color = piece_type + color * 6
         captured_piece = self.piece_captured(from_square, to_square, 
@@ -167,12 +168,12 @@ class Board:
 
         # Pawn moves, non-promotion
         elif piece_type == 0:
-            if self.en_passant_flag > -1:
+            if is_capture:
                 ep_square = self.is_en_passant(from_square, to_square, color)
-                if ep_square > -1:
+                if ep_square != -1 and self.en_passant_flag != -1:
                     self.remove_from_bitboard(captured_piece, ep_square)
-            elif is_capture:
-                self.remove_from_bitboard(captured_piece, to_square)
+                else:
+                    self.remove_from_bitboard(captured_piece, to_square)
             self.remove_from_bitboard(piece_type_color, from_square)
             self.add_to_bitboard(piece_type_color, to_square)
             commital = True
