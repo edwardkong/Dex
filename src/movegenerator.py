@@ -7,9 +7,9 @@ DIRECTIONS = [
         ]
 
 class MoveGenerator:
-    def __init__(self, board, color):
+    def __init__(self, board):
         self.board = board
-        self.color = color
+        self.color = board.color
         self.pinned_ray_mask = 0
         self.attacked_jump_mask = 0
         self.check_ray_mask = 0
@@ -17,7 +17,7 @@ class MoveGenerator:
         self.double_check = False
         self.moves = []
         self.attacked_ray_mask = 0
-        self.king_square = tools.bitscan_lsb(board.bitboards[5 + color * 6])
+        self.king_square = tools.bitscan_lsb(board.bitboards[5 + self.color * 6])
 
         self.generate_attacked_ray_mask()
         self.calculate_attacks_on_king()

@@ -76,7 +76,7 @@ KING_TABLE = [
 ] # Middle / Early Game, need implementation for end game
 
 KING_TABLE_END = [
-    
+
 ]
 
 def evaluate_board(board):
@@ -121,6 +121,9 @@ def evaluate_board(board):
 
             # Clear the LSB to move to the next piece
             pieces &= pieces - 1
+        
+    if board.castling_rights & (0b11 << (board.color * 2)):
+        evaluation += (5 if color else -5)
 
     return evaluation
 
@@ -148,7 +151,7 @@ def update_depth(gamestate):
             pieces_remaining_score += num_pieces * QUEEN_VALUE
     
     if pieces_remaining_score <= 1200:
-        return 5
+        return 4
     
     else:
         return 3

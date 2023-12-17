@@ -7,6 +7,7 @@ f = open("eval.txt", "a")
 
 class Search:
     def __init__(self, tt, depth=None, eval_func=None):
+        self.order = 0 
         if eval_func is None:
             self.eval_func = evaluate.evaluate_board
         self.tt = tt
@@ -18,18 +19,14 @@ class Search:
         return self.best_moves[self.max_depth]
 
     def negamax(self, board, depth, color, alpha, beta):
+        self.order += 1
+        #f.write(str(self.order) + ': ' + str(depth)+ ' ')
         tp = self.tt.lookup_key(board.zobrist_key, depth)
         if tp:
             return tp.eval, None
 
-        mg = MoveGenerator(board, color)
+        mg = MoveGenerator(board)
         legal_moves = mg.generate_moves()
-
-        ordered_moves = sorted(
-            legal_moves, 
-            key=lambda move: self.order_moves(board, move, depth), 
-            reverse=True
-            )
 
         if not legal_moves:
             if mg.in_check:
@@ -39,19 +36,29 @@ class Search:
                     return float('-100000000'), None
             else:
                 return 0.0, None
-            
+
         if depth == 0:
             if color == 0:
-                return self.quiescence_search(board, alpha, beta), None
+                return self.quiescence_search(board, alpha, beta, limit=2), None
+                return self.eval_func(board), None
             else:
-                return -self.quiescence_search(board, alpha, beta), None
+                return -self.quiescence_search(board, alpha, beta, limit=2), None
+                return -self.eval_func(board), None
+
+
+        ordered_moves = sorted(
+            legal_moves, 
+            key=lambda move: self.order_moves(board, move, depth), 
+            reverse=True
+            )
         
         max_eval = float('-inf')
         for move in ordered_moves:
+            #f.write(tools.int_to_uci(move) + '\n')
             pos = board.sim_move(move)
             eval = -self.negamax(pos, depth - 1, 1 - color, -beta, -alpha)[0]
 
-            f.write(f"color: {color} move: {tools.int_to_uci(move)} eval: {eval} max_eval: {max_eval} alpha: {alpha} beta: {beta}\n")
+            #f.write(f"color: {color} depth: {depth} move: {tools.int_to_uci(move)} eval: {eval} max_eval: {max_eval} alpha: {alpha} beta: {beta}\n")
 
             entry = TTEntry(pos.zobrist_key, depth - 1, eval, pos.commits)
             self.tt.store_eval(entry)
@@ -62,24 +69,17 @@ class Search:
             alpha = max(alpha, eval)
             if beta < alpha:
                 break
-
         return max_eval, best_move
 
 
     def minimax_ab(self, board, depth, color, alpha, beta):
         tp = self.tt.lookup_key(board.zobrist_key, depth)
         if tp:
-            #f.write("transposition\n")
+            ##f.write("transposition\n")
             return tp.eval, None
         
-        mg = MoveGenerator(board, color)
+        mg = MoveGenerator(board)
         legal_moves = mg.generate_moves()
-
-        ordered_moves = sorted(
-            legal_moves, 
-            key=lambda move: self.order_moves(board, move, depth), 
-            reverse=True
-            )
 
         if not legal_moves:
             if mg.in_check:
@@ -94,12 +94,18 @@ class Search:
             #if evaluate.is_position_quiet(board):
             #return self.eval_func(board), None
             #else:
-            #f.write(f"new node alpha={alpha} beta={beta}\n")
-            return self.quiescence_search(board, alpha, beta), None
+            ##f.write(f"new node alpha={alpha} beta={beta}\n")
+            return self.quiescence_search(board, alpha, beta, limit=2), None
 
         #for move in legal_moves:
-            #f.write(f"{tools.int_to_uci(move)}")
-        #f.write("\n")
+            ##f.write(f"{tools.int_to_uci(move)}")
+        ##f.write("\n")
+
+        ordered_moves = sorted(
+            legal_moves, 
+            key=lambda move: self.order_moves(board, move, depth), 
+            reverse=True
+            )
 
         if color == 0: # maximizing player
             max_eval = float('-inf')
@@ -108,8 +114,8 @@ class Search:
                 
                 pos = board.sim_move(move)
                 eval, _ = self.minimax_ab(pos, depth - 1, 1, alpha, beta)
-                #f.write("maximizing\n")
-                #f.write(f"depth: {depth} - move: {tools.int_to_uci(move)} - eval: {eval}\n")
+                ##f.write("maximizing\n")
+                ##f.write(f"depth: {depth} - move: {tools.int_to_uci(move)} - eval: {eval}\n")
 
 
                 entry = TTEntry(pos.zobrist_key, depth - 1, eval, pos.commits)
@@ -121,7 +127,7 @@ class Search:
 
                 alpha = max(alpha, eval)
                 if beta < alpha:
-                    #f.write(f"mm maximizer beta cutoff alpha:{alpha} beta:{beta}\n")
+                    ##f.write(f"mm maximizer beta cutoff alpha:{alpha} beta:{beta}\n")
                     break
             
             return max_eval, best_move
@@ -132,8 +138,8 @@ class Search:
             for move in ordered_moves:
                 pos = board.sim_move(move)
                 eval, _ = self.minimax_ab(pos, depth - 1, 0, alpha, beta)
-                #f.write("minimizing\n")
-                #f.write(f"depth: {depth} - move: {tools.int_to_uci(move)} - eval: {eval}\n")
+                ##f.write("minimizing\n")
+                ##f.write(f"depth: {depth} - move: {tools.int_to_uci(move)} - eval: {eval}\n")
 
 
                 entry = TTEntry(pos.zobrist_key, depth - 1, eval, pos.commits)
@@ -145,7 +151,7 @@ class Search:
 
                 beta = min(beta, eval)
                 if beta < alpha:
-                    #f.write(f"mm minimizer beta cutoff alpha:{alpha} beta:{beta}\n")
+                    ##f.write(f"mm minimizer beta cutoff alpha:{alpha} beta:{beta}\n")
                     break
             return min_eval, best_move
         
@@ -158,50 +164,50 @@ class Search:
             beta = float('inf')
 
         for depth in range(1, max_depth + 1):
-            #f.write(f"iter depth {depth}\n")
+            #f.write(f"iter: {depth}\n")
 
-            eval, move = self.negamax(board, depth, color, alpha, beta)
+            eval, move = self.minimax_ab(board, depth, color, alpha, beta)
             self.best_moves[depth] = (eval, move)
 
             entry = TTEntry(board.zobrist_key, depth, eval, board.commits)
             self.tt.store_eval(entry)
 
-    def quiescence_search(self, board, alpha, beta, iter=0, limit=None):
-        #tp = self.tt.lookup_key(board.zobrist_key, limit)
-        #if tp:
-            #f.write(f"q transposition {tp.eval}\n")
-        #    return tp.eval
-        #f.write("----\n")
+    def quiescence_search_nega(self, board, alpha, beta, ply=0, limit=None):
+        tp = self.tt.lookup_key(board.zobrist_key, limit)
+        if tp:
+            ##f.write(f"q transposition {tp.eval}\n")
+            return tp.eval
+        ##f.write("----\n")
         #f.write(f'ply: {str(iter)}\n')
         stand_pat = self.eval_func(board)  # Static evaluation of the current position
         #f.write(f"stand_pat: {stand_pat}\n")
-        #f.write('\n')
-        #f.write(f"limit: {limit}\n")
+        ##f.write('\n')
+        ##f.write(f"limit: {limit}\n")
         if stand_pat >= beta:
-            #f.write(f"beta cutoff {beta}\n")
+            ##f.write(f"beta cutoff {beta}\n")
             return beta
         if alpha < stand_pat:
-            #f.write(f"alpha pass {alpha}\n")
+            ##f.write(f"alpha pass {alpha}\n")
             alpha = stand_pat
         if limit is not None and limit <= 0:
             return stand_pat
         
-        mg = MoveGenerator(board, board.color)
+        mg = MoveGenerator(board)
         legal_moves = sorted(mg.generate_forcing_moves(), 
             key=lambda move: self.priority_moves(board, move), 
             reverse=True)
         
-        #f.write(f'moves: ')
-        #if not legal_moves: f.write('N/A')
+        ##f.write(f'moves: ')
+        #if not legal_moves: #f.write('N/A')
         
         #for move in legal_moves:
-        #    f.write(f"{tools.int_to_uci(move)} ")
-        #f.write("\n\n")
+        #    #f.write(f"{tools.int_to_uci(move)} ")
+        ##f.write("\n\n")
         for move in legal_moves:
-            #f.write("----\n")
-            #f.write(f"simulating: {tools.int_to_uci(move)}\n")
+            ##f.write("----\n")
+            #f.write(f"\nsimulating: {tools.int_to_uci(move)}\n")
             pos = board.sim_move(move)
-            eval = -self.quiescence_search(pos, -beta, -alpha, iter+1, None if limit is None else limit - 1)
+            eval = -self.quiescence_search(pos, -beta, -alpha, ply+1, None if limit is None else limit - 1)
 
             #entry = TTEntry(pos.zobrist_key, limit, eval, pos.commits)
             #self.tt.store_eval(entry)
@@ -211,7 +217,58 @@ class Search:
             if eval > alpha:
                 alpha = eval
 
+
+        """if board.color == 1:
+            for move in legal_moves:
+                pos = board.sim_move(move)
+                eval = self.quiescence_search(pos, alpha, beta, ply+1, None if limit is None else limit - 1)
+                """
+
+
         return alpha
+
+    def quiescence_search(self, board, alpha, beta, limit=None):
+        stand_pat = self.eval_func(board)
+        if board.color == 0:
+            if stand_pat >= beta:
+                return beta
+            if alpha < stand_pat:
+                alpha = stand_pat
+        else:
+            if stand_pat <= alpha:
+                return alpha
+            if beta > stand_pat:
+                beta = stand_pat
+
+        mg = MoveGenerator(board)
+        legal_captures = sorted(mg.generate_forcing_moves(), 
+            key=lambda move: self.priority_moves(board, move), 
+            reverse=True)
+
+        if (limit is not None and limit <= 0) or not legal_captures:
+            return stand_pat
+
+
+        if board.color == 0:
+            max_eval = float('-inf')
+            for move in legal_captures:
+                pos = board.sim_move(move)
+                eval = self.quiescence_search(pos, alpha, beta, limit - 1)
+                max_eval = max(max_eval, eval)
+                alpha = max(alpha, eval)
+                if beta <= alpha:
+                    break
+            return max_eval
+        else:
+            min_eval = float('inf')
+            for move in legal_captures:
+                pos = board.sim_move(move)
+                eval = self.quiescence_search(pos, alpha, beta, limit - 1)
+                min_eval = min(min_eval, eval)
+                beta = min(beta, eval)
+                if beta <= alpha:
+                    break
+            return min_eval
 
     def order_moves(self, board, move, depth):
         # Get PV
