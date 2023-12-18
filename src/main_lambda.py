@@ -95,7 +95,7 @@ class LambdaUCI:
     
     def invoke_lambda(self, payload):
         """Invokes lambda function."""
-        lambda_function_name = 'arn:aws:lambda:us-east-2:942356009231:function:dex'
+        lambda_function_name = ${lambda_arn}
 
         # Create a Boto3 Lambda client
         lambda_client = boto3.client('lambda')
@@ -111,7 +111,7 @@ class LambdaUCI:
 
     def send_request(self, payload):
         """Sends request to API Gateway."""
-        api_url = "https://a38t8757nf.execute-api.us-east-2.amazonaws.com/Dev/find-move"
+        api_url = ${api_gateway_arn}
 
         headers = {
             "Content-Type": "application/json"
