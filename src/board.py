@@ -142,6 +142,8 @@ class Board:
         piece_type = (move >> 12) & 0x7  # Piece type (0-5)
         color = (move >> 15) & 0x1  # Color (0 for white, 1 for black)
         promotion_flag = (move >> 16) & 0x1 # 1 if promotion
+        # Added capture flag for quiescence search, but not yet
+        # refactored other logic to utilize flag.
         capture_flag = (move >> 17) & 0x1
 
         piece_type_color = piece_type + color * 6

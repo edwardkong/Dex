@@ -1,7 +1,18 @@
 from movegenerator import MoveGenerator
 import evaluate
 from transpositiontable import TTEntry
-import tools
+
+# Current implementation is with minimax with alpha beta pruning
+# and iterative deepening and quiescence search.
+# Quiescence search adds several layers of search, resulting in 60-90%
+# of search spent here. Improvements to move ordering could help here.
+# While implemented, iterative deepening is not being fully maximized.
+# Results from previous layers should influence move ordering for the next.
+# Currently, only the PV is pushed onto the move stack.
+# Early cutoffs for time management should return the best move from
+# the last full layer searched.
+# The alpha beta window and pruning should also be revisited.
+
 
 class Search:
     def __init__(self, tt, depth=None, eval_func=None):
