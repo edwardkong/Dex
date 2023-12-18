@@ -6,7 +6,7 @@ Dex is an exploratory chess engine uniquely built in Python. The engine maintain
 
 | Feature                           | Benefits                                                                                   |
 |-----------------------------------|--------------------------------------------------------------------------------------------|
-| Bitboard Representation           | Encodes positions as 12 binary ints to enable efficient bitwise operations for faster computations. |
+| Bitboard Representation           | Encodes positions as 12 64-bit ints to enable efficient bitwise operations for faster computations. |
 | Minimax Search w/ Alpha-Beta Pruning | Prunes unpromising move branches early in search tree, enhancing decision-making efficiency.              |
 | Iterative Deepening               | Searches for the best move at increasing depths, leveraging previous results for optimization. |
 | Quiescence Search                 | Addresses the horizon effect by evaluating dynamic positions more deeply.                  |
