@@ -3,7 +3,6 @@ import tools
 import evaluate
 import precompute
 
-import gc
 import cProfile
 import pstats
 
@@ -11,7 +10,6 @@ class UCI:
     def coms(self):
         eval_func = evaluate.evaluate_board
         depth = 4
-        #gc.disable()
         new_game = GameState()
         new_game.newGameUCI()
         while True:
@@ -55,20 +53,17 @@ class UCI:
                     eval, best_move = new_game.search()
                     print(f"bestmove {tools.int_to_uci(best_move)}")
                     new_game.make_move(best_move)
-                #gc.collect()
 
             elif parsed_command[0] == "stop":
                 if best_move:
                     print(f"bestmove {tools.int_to_uci(best_move)}")
                     new_game.board.make_move(best_move)
-                    #gc.collect()
 
             elif parsed_command[0] == "quit":
                 quit()
 
-if __name__ == "__main__":
-    new_uci = UCI()
-    #new_uci.coms()
+def run_profiler():
+    """Run with profiler for debugging."""
     profiler = cProfile.Profile()
     try:
         profiler.enable()
@@ -79,3 +74,7 @@ if __name__ == "__main__":
         profiler.disable()
         stats = pstats.Stats(profiler).sort_stats('tot')
         stats.print_stats()
+
+if __name__ == "__main__":
+    new_uci = UCI()
+    new_uci.coms()

@@ -1,5 +1,11 @@
 import tools
 
+# This module contains some functions that may or may not be used
+# to generate the scope of a piece. This was extracted from the
+# main logic because it's computationally expensive.
+# Some of the functions may still be used to generate attack maps
+# or move generation.
+
 def generate_pawn_scope(from_square, color):
         """Returns pawn's scope given a square."""
         candidate = []

@@ -6,6 +6,8 @@ dist/
 *.spec
 test.py
 .DS_Store
+.vscode/
+__pycache__/
 
 # Ignore all files with a specific extension
 #*.log
@@ -21,4 +23,3 @@ test.py
 
 # Ignore a specific file in a specific directory
 #directory/file.txt
-.vscode/settings.json

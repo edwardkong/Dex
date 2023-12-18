@@ -1,6 +1,10 @@
 import tools, scope
 import precompute
 
+# This module requires optimizations, such as utilizing generators
+# to provide moves iteratively. Bit manipulations may potentially
+# be optimized further.
+
 DIRECTIONS = [
         (1, 1), (1, -1), (-1, 1), (-1, -1),
         (1, 0), (-1, 0), (0, 1), (0, -1)

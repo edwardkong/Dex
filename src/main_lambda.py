@@ -1,7 +1,6 @@
 from gamestate import GameState
 import tools
 import evaluate
-import gc
 
 import requests
 import json
@@ -33,7 +32,6 @@ class LambdaUCI:
 
     # UCI interface
     def lambda_game(self):
-        gc.disable()
         while(True):
             command = input()
             parsed_command = command.split(" ")
@@ -74,15 +72,12 @@ class LambdaUCI:
             given_move = tools.uci_to_int(move, game.board.bitboards)
             game.make_move(given_move)
         
-        if game.move < 3:
+        if game.move < 2:
             depth = 2
-        if game.move > 20:
-            depth = evaluate.update_depth(game)
-        
         else:
-            depth = self.depth
+            depth = evaluate.update_depth(game)
 
-        eval, best_move = game.search(depth, game.turn, evaluate.evaluate_board)
+        eval, best_move = game.search()
 
         return best_move
     
@@ -138,28 +133,6 @@ class LambdaUCI:
             # If the request was not successful, print an error message
             print(f"Error: {boto_response.get('statusCode')}")
         return None
-
-"""Response Format
-{'ResponseMetadata': {
-    'RequestId': '37ccb4a9-93ea-4de1-a32d-10cb0e2c49b9', 
-    'HTTPStatusCode': 200, 
-    'HTTPHeaders': {
-        'date': 'Wed, 06 Dec 2023 23:05:58 GMT', 
-        'content-type': 'application/json', 
-        'content-length': '89', 
-        'connection': 'keep-alive', 
-        'x-amzn-requestid': '37ccb4a9-93ea-4de1-a32d-10cb0e2c49b9', 
-        'x-amzn-remapped-content-length': '0', 
-        'x-amz-executed-version': '$LATEST', 
-        'x-amzn-trace-id': 'root=1-6570fe56-4dd9da7033705f415eade5b3;sampled=0;lineage=b1aeed8b:0'
-        }, 
-   'RetryAttempts': 0
-   }, 
-   'StatusCode': 200, 
-   'ExecutedVersion': '$LATEST', 
-   'Payload': <botocore.response.StreamingBody object at 0x7fd2300fea90>
-   }
-"""
 
 if __name__ == "__main__":
     new_lambda = LambdaUCI()
