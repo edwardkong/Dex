@@ -1,45 +1,17 @@
-# Dex Chess engine
+#Dex Chess Engine#
 
-0.1.1
-- AWS Lambda execution
-- Promotion flag
+Dex is an exploratory chess engine uniquely built in Python. The engine maintains its own gamestate and move generation, employing a minimax search complemented by several optimization techniques and a rudimentary evaluation heuristic move selection. Currenetly, Dex approximately plays at a 1400 level on Lichess in Blitz/Rapid. You can [watch Dex's games](https://lichess.org/@/dex_engine/tv) or [play against it](https://lichess.org/?user=dex_engine#friend) when it's online!
 
-0.1.0
-- Special moves and rare cases
-- Pins
-- Bug fixes
+##Features##
 
+Bitboard Representation: Encodes the board position as a series of 12 binary integers to enable efficient bitwise operations for faster decision making abilities.
+Minimax Search with Alpha-Beta Pruning: The decision making process uses the minimax algorithm with Alpha-Beta pruning to prune unpromising move branches early.
+Iterative Deepening: Searches for the best move one depth at a time, utilizing the previous depth's results to inform the next iteration about best pruning options.
+Quiescence Search: The quiescence search combats the horizon effect to evaluate dynamic positions more deeply.
+Zobrist Hashing & Transposition Table: Caches seen positions locally to minimize the amount of redundant calculations needed.
+UCI Compatibility: Fully compatible with UCI (Universal Chess Interface) protocol, allowing it to be used with popular chess GUIs and play automatically with the Lichess API.
+Cloud Computing: Can be configured to play using local resources or serverless compute with AWS Lambda.
 
-0.0.3
-- Move generation improvement with attack maps
-- checkmate and stalemate evaluation
-- check if a move is a capture, prioritize for move ordering in AB pruning
-- Move ordering
-- Various edge cases involving castling, pins, en passant
+###Notes###
 
-0.0.2
-- Castling implemented
-- Castling rights stored as bitboard
-- Some optimizations
-- Code cleanup
-  
-First bot win!
-12.11.26am 11.29.2023
-bernstein-2ply 1437 (0-1) dex_engine 1260
-https://lichess.org/STazc9uN/black
-
-
-0.0.1
-
-Features:
-Communicate with LiChess API using UCI
-- Accept challenges
-- Start new game
-- Create position given move set from GUI
-- Generate next move
-- Send next move to GUI
-
-Move Generation
-- Checks all legal moves of all pieces for a color
-- Does not handle castling or en passant yet
-- Can check if a square is in scope of a piece or is occupied
+If you have any questions or would like to contribute to Dex's development, feel free to fork the repo, create a pull request, log an issue, or start a discussion.
