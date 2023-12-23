@@ -2,8 +2,6 @@ from zobristhash import ZobristHash
 import tools
 # implement zobrist key gen on board update + tt implementation
 
-
-
 class Board:
     # Board representing position of pieces
     def __init__(self, board=None):
