@@ -11,6 +11,7 @@ __pycache__/
 venv/
 src/__pycache__/
 UI/
+.pytest_cache/
 
 # Ignore all files with a specific extension
 #*.log
