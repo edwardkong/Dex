@@ -5,6 +5,7 @@ import precompute
 
 import cProfile
 import pstats
+import sys
 
 class UCI:
     def coms(self):
@@ -60,7 +61,7 @@ class UCI:
                     new_game.board.make_move(best_move)
 
             elif parsed_command[0] == "quit":
-                quit()
+                sys.exit(0)
 
 def run_profiler():
     """Run with profiler for debugging."""

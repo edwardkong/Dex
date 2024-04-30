@@ -1,0 +1,24 @@
+/* styles.css */
+.chessboard {
+  display: grid;
+  grid-template: repeat(8, 1fr) / repeat(8, 1fr);
+  width: 320px;
+  height: 320px;
+  border: 3px solid #333;
+}
+.square {
+  width: 40px;
+  height: 40px;
+}
+.dark {
+  background-color: #769656;
+}
+.light {
+  background-color: #eeeed2;
+}
+.piece {
+  font-size: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
