@@ -44,9 +44,13 @@ class GameState:
         else:
             searcher = Search(self.tt, self.depth)
             eval, move = searcher.start_search(self.board)
+        
+        
 
         return eval, move
         """
+        print(sys.getsizeof(self.board))
+        print(sys.getsizeof(self))
         # Monitor transposition table size
         print(len(self.tt.entries))
         #print(self.tt.entries)

@@ -1,5 +1,6 @@
 from zobristhash import ZobristHash
 import tools
+
 # implement zobrist key gen on board update + tt implementation
 
 class Board:
