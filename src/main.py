@@ -1,11 +1,8 @@
 from gamestate import GameState
 import tools
 import evaluate
-import precompute
-
-import cProfile
-import pstats
 import sys
+import precompute
 
 class UCI:
     def coms(self):
@@ -13,6 +10,7 @@ class UCI:
         depth = 4
         new_game = GameState()
         new_game.newGameUCI()
+
         while True:
             command = input()
             parsed_command = command.split(" ")
@@ -64,20 +62,6 @@ class UCI:
             elif parsed_command[0] == "quit":
                 sys.exit(0)
 
-def run_profiler():
-    """Run with profiler for debugging."""
-    profiler = cProfile.Profile()
-    try:
-        profiler.enable()
-        cProfile.run(new_uci.coms())
-    except KeyboardInterrupt:
-        print("Keyboard Interrupt caught, ending profiling...")
-    finally:
-        profiler.disable()
-        stats = pstats.Stats(profiler).sort_stats('tot')
-        stats.print_stats()
-
 if __name__ == "__main__":
     new_uci = UCI()
-    run_profiler()
-    #new_uci.coms()
+    new_uci.coms()

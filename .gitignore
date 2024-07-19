@@ -10,3 +10,5 @@ venv/
 src/__pycache__/
 UI/
 .pytest_cache/
+benchmark/*/
+benchmark/benchmark_pivot.csv
