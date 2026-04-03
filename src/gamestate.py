@@ -8,6 +8,8 @@ import tools
 import sys
 import time
 
+MAX_DEPTH = 20
+
 
 class GameState:
     def __init__(self, board: Board=None):
@@ -16,15 +18,14 @@ class GameState:
         else:
             self.board = board
         self.tt = TranspositionTable()
-        self.depth = 6
         self.phase = 0
         self.eval_func = evaluate.evaluate_board
-        self.position_history = []  # Zobrist keys for repetition detection
-        self.halfmove_clock = 0  # For 50-move rule
+        self.position_history = []
+        self.halfmove_clock = 0
 
     def newGameUCI(self, moves=None):
-        self.turn = 0  # WHITE = 0; BLACK = 1
-        self.move = 1  # Move number (Ply)
+        self.turn = 0
+        self.move = 1
         self.move_history = []
         self.position_history = [self.board.zobrist_key]
         self.halfmove_clock = 0
@@ -38,11 +39,15 @@ class GameState:
 
     def search(self, time_limit=None):
         start_time = time.time()
-        searcher = Search(self.tt, self.depth,
+        max_depth = MAX_DEPTH if time_limit else 6
+        searcher = Search(self.tt, max_depth,
                           position_history=self.position_history,
                           halfmove_clock=self.halfmove_clock)
 
-        for d in range(1, self.depth + 1):
+        eval_score = 0
+        move = None
+
+        for d in range(1, max_depth + 1):
             searcher.max_depth = d
             searcher.nodes = 0
             searcher.iterative_deepening(self.board)
@@ -55,8 +60,15 @@ class GameState:
                   f"nodes {searcher.nodes} nps {nps} time {elapsed_ms}")
             sys.stdout.flush()
 
-            if time_limit and elapsed > time_limit * 0.5:
-                break
+            # Time management: stop if next depth would likely exceed time
+            if time_limit:
+                # Estimate next depth will take ~3-5x longer
+                if elapsed > time_limit * 0.4:
+                    break
+            else:
+                # No time limit: use fixed depth
+                if d >= 6:
+                    break
 
         return eval_score, move
 
@@ -69,7 +81,6 @@ class GameState:
         self.move_history.append(tools.int_to_uci(move))
         self.position_history.append(self.board.zobrist_key)
 
-        # Update halfmove clock
         from_square = move & 0x3F
         piece_type = (move >> 12) & 0x7
         capture_flag = (move >> 17) & 0x1
@@ -77,9 +88,6 @@ class GameState:
             self.halfmove_clock = 0
         else:
             self.halfmove_clock += 1
-
-        if self.move > 2:
-            self.depth, self.phase = evaluate.update_depth(self)
 
         if commital:
             self.tt.evict_obsolete(self.board.commits)
