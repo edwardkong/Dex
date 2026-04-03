@@ -56,14 +56,19 @@ class GameState:
             elapsed = time.time() - start_time
             elapsed_ms = int(elapsed * 1000)
             nps = int(searcher.nodes / elapsed) if elapsed > 0 else 0
-            print(f"info depth {d} score cp {int(eval_score)} "
-                  f"nodes {searcher.nodes} nps {nps} time {elapsed_ms}")
+            info_str = (f"info depth {d} score cp {int(eval_score)} "
+                        f"nodes {searcher.nodes} nps {nps} time {elapsed_ms}")
+            print(info_str)
             sys.stdout.flush()
+            # Log to stderr for monitoring
+            print(f"[dex] d={d} cp={int(eval_score)} nodes={searcher.nodes} "
+                  f"nps={nps} time={elapsed_ms}ms limit={int(time_limit*1000) if time_limit else 'none'}ms",
+                  file=sys.stderr)
 
             # Time management: stop if next depth would likely exceed time
             if time_limit:
                 # Estimate next depth will take ~3-5x longer
-                if elapsed > time_limit * 0.4:
+                if elapsed > time_limit * 0.15:
                     break
             else:
                 # No time limit: use fixed depth
