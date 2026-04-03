@@ -114,6 +114,32 @@ for f in range(8):
 # Passed pawn bonus by rank (from white's perspective, index = rank 0-7)
 PASSED_PAWN_BONUS = [0, 10, 10, 20, 40, 60, 80, 0]
 
+# Precomputed knight attack table: for each square, a bitboard of attacked squares
+KNIGHT_ATTACKS = [0] * 64
+for _sq in range(64):
+    _rank, _file = divmod(_sq, 8)
+    for _dr, _df in ((2, 1), (2, -1), (-2, 1), (-2, -1),
+                      (1, 2), (1, -2), (-1, 2), (-1, -2)):
+        _nr, _nf = _rank + _dr, _file + _df
+        if 0 <= _nr < 8 and 0 <= _nf < 8:
+            KNIGHT_ATTACKS[_sq] |= 1 << (_nr * 8 + _nf)
+
+# Castled king squares (g1=6, c1=2, g8=62, c8=58)
+_CASTLED_SQUARES = frozenset((6, 2, 62, 58))
+
+# Center files d(3) and e(4)
+_CENTER_FILES = frozenset((3, 4))
+
+# Mobility bonuses per piece type
+_MOBILITY_KNIGHT = 4
+_MOBILITY_BISHOP = 3
+_MOBILITY_ROOK = 2
+_MOBILITY_QUEEN = 1
+
+# Ray directions for sliding pieces
+_BISHOP_DIRS = ((1, 1), (1, -1), (-1, 1), (-1, -1))
+_ROOK_DIRS = ((1, 0), (-1, 0), (0, 1), (0, -1))
+
 GAME_PHASE = 0
 
 # Total non-pawn material at game start (for tapered eval phase calculation)
@@ -198,30 +224,140 @@ def _eval_pawn_structure(board, color):
 
 
 def _eval_king_safety(board, color, phase):
-    """Evaluate king safety: pawn shield bonus (scaled by phase)."""
-    if phase < 0.3:  # Skip in endgame
+    """Evaluate king safety: pawn shield, open files, castled bonus, center penalty.
+
+    All terms are scaled by game phase so they matter in the middlegame
+    but fade to zero in the endgame.
+    """
+    if phase < 0.2:  # Skip in deep endgame
         return 0
 
     score = 0
     king_sq = tools.bitscan_lsb(board.bitboards[5 + color * 6])
     king_file = king_sq & 7
     king_rank = king_sq >> 3
-    pawns = board.bitboards[0 + color * 6]
+    own_pawns = board.bitboards[0 + color * 6]
+    enemy_pawns = board.bitboards[0 + (1 - color) * 6]
 
-    # Check pawn shield (pawns on 2nd/3rd rank in front of king)
+    # --- Pawn shield: +15 per friendly pawn on the rank directly in front ---
     shield_rank = king_rank + (1 if color == 0 else -1)
+    shield_count = 0
     if 0 <= shield_rank < 8:
         for f in range(max(0, king_file - 1), min(8, king_file + 2)):
             shield_sq = shield_rank * 8 + f
-            if pawns & (1 << shield_sq):
-                score += 10
+            if own_pawns & (1 << shield_sq):
+                score += 15
+                shield_count += 1
 
-    # Penalty for open files near king
+    # --- Castled king bonus: +40 if king on a castled square with >= 2 shield pawns ---
+    if king_sq in _CASTLED_SQUARES and shield_count >= 2:
+        score += 40
+
+    # --- Open and semi-open file penalties near king ---
     for f in range(max(0, king_file - 1), min(8, king_file + 2)):
-        if not (pawns & FILE_MASKS[f]):
-            score -= 15
+        file_mask = FILE_MASKS[f]
+        own_on_file = own_pawns & file_mask
+        enemy_on_file = enemy_pawns & file_mask
+        if not own_on_file:
+            if not enemy_on_file:
+                score -= 25  # Fully open file
+            else:
+                score -= 15  # Semi-open file (only enemy pawns)
+
+    # --- Center file penalty: -30 if king sits on d or e file in middlegame ---
+    if king_file in _CENTER_FILES:
+        score -= 30
 
     return int(score * phase)
+
+
+def _eval_mobility(board, color):
+    """Evaluate piece mobility using inline ray casting (no MoveGenerator).
+
+    Knights: precomputed attack table, +4 per non-friendly square.
+    Bishops: diagonal ray cast, +3 per reachable square.
+    Rooks:   orthogonal ray cast, +2 per reachable square.
+    Queens:  combined rays, +1 per reachable square.
+    """
+    score = 0
+    friendly = board.occupants[color]
+    all_occ = board.occupants[2]
+
+    # --- Knights ---
+    knights = board.bitboards[1 + color * 6]
+    while knights:
+        sq = tools.bitscan_lsb(knights)
+        # Use precomputed table; count squares not occupied by friendly pieces
+        attacks = KNIGHT_ATTACKS[sq] & ~friendly
+        # Popcount via Kernighan
+        temp = attacks
+        while temp:
+            score += _MOBILITY_KNIGHT
+            temp &= temp - 1
+        knights &= knights - 1
+
+    # --- Bishops (diagonal ray cast) ---
+    bishops = board.bitboards[2 + color * 6]
+    while bishops:
+        sq = tools.bitscan_lsb(bishops)
+        rank = sq >> 3
+        file = sq & 7
+        for dr, df in _BISHOP_DIRS:
+            r, f = rank + dr, file + df
+            while 0 <= r < 8 and 0 <= f < 8:
+                target = r * 8 + f
+                target_bit = 1 << target
+                if friendly & target_bit:
+                    break  # Blocked by own piece
+                score += _MOBILITY_BISHOP
+                if all_occ & target_bit:
+                    break  # Captured enemy piece, can't go further
+                r += dr
+                f += df
+        bishops &= bishops - 1
+
+    # --- Rooks (orthogonal ray cast) ---
+    rooks = board.bitboards[3 + color * 6]
+    while rooks:
+        sq = tools.bitscan_lsb(rooks)
+        rank = sq >> 3
+        file = sq & 7
+        for dr, df in _ROOK_DIRS:
+            r, f = rank + dr, file + df
+            while 0 <= r < 8 and 0 <= f < 8:
+                target = r * 8 + f
+                target_bit = 1 << target
+                if friendly & target_bit:
+                    break
+                score += _MOBILITY_ROOK
+                if all_occ & target_bit:
+                    break
+                r += dr
+                f += df
+        rooks &= rooks - 1
+
+    # --- Queens (combined bishop + rook rays, lower weight) ---
+    queens = board.bitboards[4 + color * 6]
+    while queens:
+        sq = tools.bitscan_lsb(queens)
+        rank = sq >> 3
+        file = sq & 7
+        # All 8 directions
+        for dr, df in _BISHOP_DIRS + _ROOK_DIRS:
+            r, f = rank + dr, file + df
+            while 0 <= r < 8 and 0 <= f < 8:
+                target = r * 8 + f
+                target_bit = 1 << target
+                if friendly & target_bit:
+                    break
+                score += _MOBILITY_QUEEN
+                if all_occ & target_bit:
+                    break
+                r += dr
+                f += df
+        queens &= queens - 1
+
+    return score
 
 
 def _eval_pieces(board, color):
@@ -328,6 +464,10 @@ def evaluate_board(board):
     # Piece bonuses (bishop pair, rook on open file)
     evaluation += _eval_pieces(board, 0)
     evaluation -= _eval_pieces(board, 1)
+
+    # Piece mobility
+    evaluation += _eval_mobility(board, 0)
+    evaluation -= _eval_mobility(board, 1)
 
     # Return relative to side to move
     return evaluation if board.color == 0 else -evaluation
