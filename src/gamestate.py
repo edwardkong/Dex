@@ -16,7 +16,7 @@ class GameState:
         else:
             self.board = board
         self.tt = TranspositionTable()
-        self.depth = 4
+        self.depth = 5
         self.phase = 0
         self.eval_func = evaluate.evaluate_board
 

@@ -8,7 +8,9 @@ ROOK_VALUE = 494
 QUEEN_VALUE = 903
 KING_VALUE = 20000
 
-# Piece square tables (these are simple tables and not optimized for real use)
+PIECE_VALUES = [PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE]
+
+# Piece square tables
 PAWN_TABLE = [
      0,  0,  0,  0,  0,  0,  0,  0,
      50, 50, 50, 50, 50, 50, 50, 50,
@@ -84,7 +86,7 @@ KING_TABLE = [
     -10,-20,-20,-20,-20,-20,-20,-10,
     20, 20,  0,  0,  0,  0, 20, 20,
     20, 30, 10,  0,  0, 10, 30, 20
-] # Middle / Early Game, need implementation for end game
+]
 
 KING_TABLE_END = [
     -20, -10, -10, -10, -10, -10, -10, -20,
@@ -97,92 +99,225 @@ KING_TABLE_END = [
     -50, -30, -30, -30, -30, -30, -30, -50
 ]
 
+PIECE_TABLES = [PAWN_TABLE, KNIGHT_TABLE, BISHOP_TABLE, ROOK_TABLE, QUEEN_TABLE, KING_TABLE]
+PIECE_TABLES_END = [PAWN_TABLE_END, KNIGHT_TABLE, BISHOP_TABLE, ROOK_TABLE, QUEEN_TABLE, KING_TABLE_END]
+
+# File masks for pawn structure evaluation
+FILE_MASKS = [0x0101010101010101 << f for f in range(8)]
+ADJACENT_FILE_MASKS = [0] * 8
+for f in range(8):
+    if f > 0:
+        ADJACENT_FILE_MASKS[f] |= FILE_MASKS[f - 1]
+    if f < 7:
+        ADJACENT_FILE_MASKS[f] |= FILE_MASKS[f + 1]
+
+# Passed pawn bonus by rank (from white's perspective, index = rank 0-7)
+PASSED_PAWN_BONUS = [0, 10, 10, 20, 40, 60, 80, 0]
+
 GAME_PHASE = 0
 
-def push_king(board):
-    enemy_king_square = tools.bitscan_lsb(board.bitboards[5 + (1 - board.color)*6])
-    e_rank, e_file = divmod(enemy_king_square, 8)
+# Total non-pawn material at game start (for tapered eval phase calculation)
+STARTING_MATERIAL = 2 * (KNIGHT_VALUE + BISHOP_VALUE + ROOK_VALUE + QUEEN_VALUE)
 
+
+def _compute_phase(board):
+    """Compute game phase from 0.0 (endgame) to 1.0 (opening)."""
+    material = 0
+    for piece_type in range(1, 5):  # N, B, R, Q only
+        for color in range(2):
+            pieces = board.bitboards[piece_type + color * 6]
+            while pieces:
+                material += PIECE_VALUES[piece_type]
+                pieces &= pieces - 1
+    return min(material / STARTING_MATERIAL, 1.0)
+
+
+def _eval_pawn_structure(board, color):
+    """Evaluate pawn structure: doubled, isolated, passed pawns."""
+    score = 0
+    pawns = board.bitboards[0 + color * 6]
+    enemy_pawns = board.bitboards[0 + (1 - color) * 6]
+
+    for f in range(8):
+        file_pawns = pawns & FILE_MASKS[f]
+        if not file_pawns:
+            continue
+
+        # Doubled pawns: more than one pawn on same file
+        count = 0
+        temp = file_pawns
+        while temp:
+            count += 1
+            temp &= temp - 1
+        if count > 1:
+            score -= 15 * (count - 1)
+
+        # Isolated pawns: no friendly pawns on adjacent files
+        if not (pawns & ADJACENT_FILE_MASKS[f]):
+            score -= 20
+
+    # Passed pawns
+    temp_pawns = pawns
+    while temp_pawns:
+        sq = tools.bitscan_lsb(temp_pawns)
+        rank = sq >> 3
+        file = sq & 7
+
+        # A pawn is passed if no enemy pawns on same or adjacent files ahead
+        is_passed = True
+        if color == 0:  # White
+            for r in range(rank + 1, 7):
+                check_sq_mask = 0
+                if file > 0:
+                    check_sq_mask |= 1 << (r * 8 + file - 1)
+                check_sq_mask |= 1 << (r * 8 + file)
+                if file < 7:
+                    check_sq_mask |= 1 << (r * 8 + file + 1)
+                if enemy_pawns & check_sq_mask:
+                    is_passed = False
+                    break
+            if is_passed:
+                score += PASSED_PAWN_BONUS[rank]
+        else:  # Black
+            for r in range(rank - 1, 0, -1):
+                check_sq_mask = 0
+                if file > 0:
+                    check_sq_mask |= 1 << (r * 8 + file - 1)
+                check_sq_mask |= 1 << (r * 8 + file)
+                if file < 7:
+                    check_sq_mask |= 1 << (r * 8 + file + 1)
+                if enemy_pawns & check_sq_mask:
+                    is_passed = False
+                    break
+            if is_passed:
+                score += PASSED_PAWN_BONUS[7 - rank]
+
+        temp_pawns &= temp_pawns - 1
+
+    return score
+
+
+def _eval_king_safety(board, color, phase):
+    """Evaluate king safety: pawn shield bonus (scaled by phase)."""
+    if phase < 0.3:  # Skip in endgame
+        return 0
+
+    score = 0
+    king_sq = tools.bitscan_lsb(board.bitboards[5 + color * 6])
+    king_file = king_sq & 7
+    king_rank = king_sq >> 3
+    pawns = board.bitboards[0 + color * 6]
+
+    # Check pawn shield (pawns on 2nd/3rd rank in front of king)
+    shield_rank = king_rank + (1 if color == 0 else -1)
+    if 0 <= shield_rank < 8:
+        for f in range(max(0, king_file - 1), min(8, king_file + 2)):
+            shield_sq = shield_rank * 8 + f
+            if pawns & (1 << shield_sq):
+                score += 10
+
+    # Penalty for open files near king
+    for f in range(max(0, king_file - 1), min(8, king_file + 2)):
+        if not (pawns & FILE_MASKS[f]):
+            score -= 15
+
+    return int(score * phase)
+
+
+def _eval_pieces(board, color):
+    """Evaluate piece-specific bonuses: bishop pair, rook on open file."""
+    score = 0
+    pawns_w = board.bitboards[0]
+    pawns_b = board.bitboards[6]
+
+    # Bishop pair
+    bishops = board.bitboards[2 + color * 6]
+    if bishops and (bishops & (bishops - 1)):  # More than one bishop
+        score += 30
+
+    # Rook on open/semi-open file
+    rooks = board.bitboards[3 + color * 6]
+    own_pawns = board.bitboards[0 + color * 6]
+    enemy_pawns = board.bitboards[0 + (1 - color) * 6]
+    while rooks:
+        sq = tools.bitscan_lsb(rooks)
+        f = sq & 7
+        if not (own_pawns & FILE_MASKS[f]):
+            if not (enemy_pawns & FILE_MASKS[f]):
+                score += 25  # Open file
+            else:
+                score += 15  # Semi-open file
+        rooks &= rooks - 1
+
+    return score
+
+
+def push_king(board):
+    enemy_king_square = tools.bitscan_lsb(board.bitboards[5 + (1 - board.color) * 6])
+    e_rank = enemy_king_square >> 3
+    e_file = enemy_king_square & 7
     rank_score = abs(e_rank * 2 - 7)
     file_score = abs(e_file * 2 - 7)
-
     return rank_score + file_score
+
 
 def evaluate_board(board):
     evaluation = 0
-    turn = board.color
-    
-    if GAME_PHASE >= 2:
-        pawn_table_gamestate = PAWN_TABLE_END
-        king_table_gamestate = KING_TABLE_END
-    else:
-        pawn_table_gamestate = PAWN_TABLE
-        king_table_gamestate = KING_TABLE
 
-    if GAME_PHASE == 3:
+    # Compute game phase for tapered eval
+    phase = _compute_phase(board)
+
+    # Select piece-square tables based on phase
+    if phase > 0.5:
+        pst = PIECE_TABLES
+    else:
+        pst = PIECE_TABLES_END
+
+    # Endgame king push
+    if phase < 0.15:
         evaluation += push_king(board) * 15
 
+    # Material + PST
     for piece in range(12):
         piece_type = piece % 6
         color = piece // 6
-        pieces = board.bitboards[piece]          
-        sign = -1 if color else 1  
+        pieces = board.bitboards[piece]
+        sign = -1 if color else 1
 
         while pieces:
-            square = tools.bitscan_lsb(pieces) 
-            if not color:
-                square = (63 - square)
-            if piece_type == 0:
-                evaluation += ((sign * PAWN_VALUE)
-                               + (sign * pawn_table_gamestate[square]))
-
-            elif piece_type == 1:
-                evaluation += ((sign * KNIGHT_VALUE)
-                               + (sign * KNIGHT_TABLE[square]))
-
-            elif piece_type == 2:
-                evaluation += ((sign * BISHOP_VALUE)
-                               + (sign * BISHOP_TABLE[square]))
-
-            elif piece_type == 3:
-                evaluation += ((sign * ROOK_VALUE)
-                               + (sign * ROOK_TABLE[square]))
-
-            elif piece_type == 4:
-                evaluation += ((sign * QUEEN_VALUE)
-                               + (sign * QUEEN_TABLE[square]))
-
-            elif piece_type == 5:
-                evaluation += ((sign * KING_VALUE)
-                               + (sign * king_table_gamestate[square]))
-
-            # Clear the LSB to move to the next piece
+            square = tools.bitscan_lsb(pieces)
+            table_sq = (63 - square) if not color else square
+            evaluation += sign * (PIECE_VALUES[piece_type] + pst[piece_type][table_sq])
             pieces &= pieces - 1
-        
-    if board.castling_rights & 0b1100:
-        evaluation -= 8
-    if board.castling_rights & 0b11:
-        evaluation += 8
 
-    # Return relative to side to move (positive = good for side to move)
+    # Pawn structure
+    evaluation += _eval_pawn_structure(board, 0)
+    evaluation -= _eval_pawn_structure(board, 1)
+
+    # King safety
+    evaluation += _eval_king_safety(board, 0, phase)
+    evaluation -= _eval_king_safety(board, 1, phase)
+
+    # Piece bonuses (bishop pair, rook on open file)
+    evaluation += _eval_pieces(board, 0)
+    evaluation -= _eval_pieces(board, 1)
+
+    # Return relative to side to move
     return evaluation if board.color == 0 else -evaluation
+
 
 def update_depth(gamestate):
     global GAME_PHASE
     depth = gamestate.depth
-    phase = 0 #0: early, 1: mid, 2: late, 3: end
     pieces_remaining_score = 0
 
     piece_values = [PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE]
 
-    # Count material for BOTH sides
     for color in range(2):
         for piece_type in range(5):
             num_pieces = bin(gamestate.board.bitboards[piece_type + color * 6]).count('1')
             pieces_remaining_score += num_pieces * piece_values[piece_type]
 
-    # More material = bigger branching factor = lower depth
-    # Less material = smaller branching factor = higher depth
     if pieces_remaining_score <= 600:
         depth = 6
         phase = 3
@@ -190,72 +325,11 @@ def update_depth(gamestate):
         depth = 5
         phase = 2
     elif pieces_remaining_score <= 4000:
-        depth = 4
+        depth = 5
         phase = 1
     else:
-        depth = 4
+        depth = 5
         phase = 0
 
     GAME_PHASE = phase
     return depth, phase
-    
-def is_position_quiet(board):
-    DIRECTIONS = [
-            (1, 1), (1, -1), (-1, 1), (-1, -1),
-            (1, 0), (-1, 0), (0, 1), (0, -1)
-            ]
-    KNIGHT_JUMPS = [
-        (2, 1), (1, 2), (-2, 1), (-1, 2),
-        (2, -1), (1, -2), (-2, -1), (-1, -2)
-    ]
-
-    color = board.color
-    pieces = board.occupants[color]
-    while pieces:
-        piece_square = tools.bitscan_lsb(pieces)
-        rank, file = divmod(piece_square, 8)
-
-        for k in KNIGHT_JUMPS:
-            new_rank, new_file = rank + k[0], file + k[1]
-            if 0 <= new_rank < 8 and 0 <= new_file < 8:
-                new_square = 8 * new_rank + new_file
-                if board.bitboards[1 + (1 - color) * 6] & (1 << new_square):
-                    return False
-                
-        if color:
-            if board.bitboards[0] & (1 << (piece_square - 9)):
-                if file != 7:
-                    return False
-            if board.bitboards[0] & (1 << (piece_square - 7)):
-                if file != 0:
-                    return False
-        else:
-            if board.bitboards[6] & (1 << (piece_square + 7)):
-                if file != 7:
-                    return False
-            if board.bitboards[6] & (1 << (piece_square + 9)):
-                if file != 0:
-                    return False
-                    
-        for d in DIRECTIONS:
-            new_rank, new_file = rank + d[0], file + d[1]
-            while (0 <= new_rank < 8 and 0 <= new_file < 8):
-                new_square = 8 * new_rank + new_file
-                if board.occupants[color] & (1 << new_square):
-                    break
-                if board.occupants[1 - color] & (1 << new_square):
-                    if (board.bitboards[4 + (1 - color) * 6] & (1 << new_square)):
-                        return False
-                    if ((board.bitboards[2 + (1 - color) * 6] & (1 << new_square)) and
-                        abs(d[0]) == abs(d[1])):
-                        return False
-                    if ((board.bitboards[3 + (1 - color) * 6] & (1 << new_square)) and
-                        (not d[0] or not d[1])):
-                        return False
-                    else:
-                        break
-                new_rank += d[0]
-                new_file += d[1]
-        pieces &= pieces - 1
-    return True
-    
