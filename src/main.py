@@ -94,7 +94,7 @@ class UCI:
                     else:
                         remaining = params.get("btime", 60000)
                         increment = params.get("binc", 0)
-                    time_limit = (remaining / 30.0 + increment) / 1000.0
+                    time_limit = (remaining / 20.0 + increment * 0.75) / 1000.0
 
                 eval_score, best_move = new_game.search(time_limit=time_limit)
 
