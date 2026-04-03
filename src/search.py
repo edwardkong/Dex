@@ -4,6 +4,7 @@ from transpositiontable import TTEntry, EXACT, LOWERBOUND, UPPERBOUND
 
 MATE_SCORE = 100000
 MAX_PLY = 64
+ASPIRATION_WINDOW = 50
 
 
 class Search:
@@ -16,9 +17,7 @@ class Search:
         self.tt = tt
         self.best_moves = {}
         self.max_depth = depth
-        # Killer moves: 2 slots per ply
         self.killers = [[None, None] for _ in range(MAX_PLY)]
-        # History heuristic: [color][from_sq][to_sq]
         self.history = [[[0] * 64 for _ in range(64)] for _ in range(2)]
 
     def start_search(self, board):
@@ -26,15 +25,31 @@ class Search:
         return self.best_moves[self.max_depth]
 
     def iterative_deepening(self, board):
+        prev_score = 0
         for depth in range(1, self.max_depth + 1):
-            alpha = float('-inf')
-            beta = float('inf')
-            eval_score, move = self.negamax(board, depth, 0, alpha, beta)
-            self.best_moves[depth] = (eval_score, move)
+            if depth <= 2:
+                alpha = float('-inf')
+                beta = float('inf')
+            else:
+                # Aspiration window around previous score
+                alpha = prev_score - ASPIRATION_WINDOW
+                beta = prev_score + ASPIRATION_WINDOW
 
-    def negamax(self, board, depth, ply, alpha, beta, capture_flag=False):
+            eval_score, move = self.negamax(board, depth, 0, alpha, beta)
+
+            # Re-search with full window if score fell outside aspiration
+            if eval_score <= alpha or eval_score >= beta:
+                eval_score, move = self.negamax(board, depth, 0,
+                                                float('-inf'), float('inf'))
+
+            self.best_moves[depth] = (eval_score, move)
+            prev_score = eval_score
+
+    def negamax(self, board, depth, ply, alpha, beta, capture_flag=False,
+                null_move_allowed=True):
         self.nodes += 1
         orig_alpha = alpha
+        in_check = False
 
         # TT lookup
         tp = self.tt.lookup_key(board.zobrist_key, depth)
@@ -50,13 +65,18 @@ class Search:
 
         mg = MoveGenerator(board)
         legal_moves = mg.generate_moves()
+        in_check = mg.in_check
 
         # No legal moves: checkmate or stalemate
         if not legal_moves:
-            if mg.in_check:
+            if in_check:
                 return -MATE_SCORE - depth, None
             else:
                 return 0, None
+
+        # Check extension: search one ply deeper when in check
+        if in_check:
+            depth += 1
 
         # Leaf node
         if depth == 0:
@@ -64,6 +84,22 @@ class Search:
                 return self.quiescence_search(board, alpha, beta, limit=4), None
             else:
                 return self.eval_func(board), None
+
+        # Null move pruning: skip our turn and search at reduced depth
+        # If we can still cause a beta cutoff, prune this branch
+        if (null_move_allowed and depth >= 3 and not in_check
+                and ply > 0):
+            R = 2 + (depth > 6)
+            # Make null move (just flip color)
+            board.color = 1 - board.color
+            null_score, _ = self.negamax(board, depth - 1 - R, ply + 1,
+                                         -beta, -beta + 1,
+                                         null_move_allowed=False)
+            null_score = -null_score
+            board.color = 1 - board.color
+
+            if null_score >= beta:
+                return beta, None
 
         # Order moves
         tt_move = self.tt.lookup_move(board.zobrist_key)
@@ -75,13 +111,31 @@ class Search:
 
         best_eval = float('-inf')
         best_move = None
+        moves_searched = 0
+
         for move in ordered_moves:
             capture_flag = (move >> 17) & 0x1
 
             undo = board.make_move(move)
-            eval_score, _ = self.negamax(board, depth - 1, ply + 1, -beta, -alpha, capture_flag)
+
+            # Late move reductions: reduce depth for late quiet moves
+            reduction = 0
+            if (moves_searched >= 4 and depth >= 3
+                    and not capture_flag and not in_check):
+                reduction = 1
+
+            eval_score, _ = self.negamax(board, depth - 1 - reduction,
+                                         ply + 1, -beta, -alpha, capture_flag)
             eval_score = -eval_score
+
+            # Re-search at full depth if reduced search improved alpha
+            if reduction and eval_score > alpha:
+                eval_score, _ = self.negamax(board, depth - 1, ply + 1,
+                                             -beta, -alpha, capture_flag)
+                eval_score = -eval_score
+
             board.unmake_move(undo)
+            moves_searched += 1
 
             if eval_score > best_eval:
                 best_eval = eval_score
@@ -89,7 +143,6 @@ class Search:
 
             alpha = max(alpha, eval_score)
             if alpha >= beta:
-                # Beta cutoff — update killer moves and history for quiet moves
                 if not capture_flag:
                     self._store_killer(ply, move)
                     from_sq = move & 0x3F
@@ -98,14 +151,15 @@ class Search:
                     self.history[color][from_sq][to_sq] += depth * depth
                 break
 
-        # Store in TT with bound type and best move
+        # Store in TT
         if best_eval <= orig_alpha:
             bound = UPPERBOUND
         elif best_eval >= beta:
             bound = LOWERBOUND
         else:
             bound = EXACT
-        entry = TTEntry(board.zobrist_key, depth, best_eval, board.commits, bound, best_move)
+        entry = TTEntry(board.zobrist_key, depth, best_eval, board.commits,
+                        bound, best_move)
         self.tt.store_eval(entry)
 
         return best_eval, best_move
@@ -150,7 +204,6 @@ class Search:
         return alpha
 
     def _store_killer(self, ply, move):
-        """Store a killer move at the given ply (2 slots)."""
         if ply >= MAX_PLY:
             return
         if self.killers[ply][0] != move:
@@ -158,11 +211,9 @@ class Search:
             self.killers[ply][0] = move
 
     def order_moves(self, board, move, depth, ply, tt_move):
-        # TT best move gets highest priority
         if tt_move and move == tt_move:
             return 200000
 
-        # PV move from previous iteration
         pv_move = self.best_moves.get(depth - 1)
         if pv_move and pv_move[1] == move:
             return 190000
@@ -173,30 +224,25 @@ class Search:
         promotion_flag = (move >> 16) & 0x1
         capture_flag = (move >> 17) & 0x1
 
-        # Promotions
         if promotion_flag:
             return 180000
 
-        # Captures: MVV-LVA
         if capture_flag or (board.occupants[1 - color] & (1 << to_square)):
             for i in range(5):
                 if board.bitboards[i + (1 - color) * 6] & (1 << to_square):
                     return 100000 + 10 * i - piece_type
-            return 100000  # En passant
+            return 100000
 
-        # Killer moves
         if ply < MAX_PLY:
             if move == self.killers[ply][0]:
                 return 90000
             if move == self.killers[ply][1]:
                 return 89000
 
-        # History heuristic
         from_square = move & 0x3F
         return self.history[color][from_square][to_square]
 
     def priority_moves(self, board, move):
-        """MVV-LVA ordering for captures in quiescence search."""
         to_square = (move >> 6) & 0x3F
         piece_type = (move >> 12) & 0x7
         color = (move >> 15) & 0x1
