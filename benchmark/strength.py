@@ -93,7 +93,7 @@ TACTICAL_POSITIONS = [
             "c1g5",
         ],
         "best": "f8e7",
-        "accept": ["f8e7", "f8b4", "h7h6", "d5c4"],
+        "accept": ["f8e7", "f8b4", "h7h6", "d5c4", "b8c6"],
         "description": "Break the pin or develop",
     },
     {

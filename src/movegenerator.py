@@ -135,30 +135,31 @@ class MoveGenerator:
             
         for to_square in candidate:
             promotion_flag = 0
+            move_piece = piece_type
             if type(to_square) == str:
-                piece_type = tools.char_to_int_piece(to_square[-1])
+                move_piece = tools.char_to_int_piece(to_square[-1])
                 to_square = int(to_square[:-1])
                 promotion_flag = 1
 
             # Piece is pinned and destination is outside of the pin or
             # King is in check and piece destination is not blocking
-            if ((self.pinned_ray_mask & (1 << from_square) and 
-                not self.is_moving_along_pin(from_square, to_square)) or 
-                (self.in_check and 
+            if ((self.pinned_ray_mask & (1 << from_square) and
+                not self.is_moving_along_pin(from_square, to_square)) or
+                (self.in_check and
                  not self.check_ray_mask & (1 << to_square))):
                     continue
-            
-            move = (from_square 
-                    | (to_square << 6) 
-                    | (piece_type << 12) 
-                    | (color << 15) 
+
+            move = (from_square
+                    | (to_square << 6)
+                    | (move_piece << 12)
+                    | (color << 15)
                     | (promotion_flag << 16))
             legal_moves.append(move)
-        
+
         return legal_moves
 
     def generate_piece_moves(self, piece_type, from_square):
-        """Returns legal moves for each non-king piece."""        
+        """Returns legal moves for each non-king piece."""
         candidate = []
         legal_moves = []
         color = self.color
@@ -172,14 +173,15 @@ class MoveGenerator:
             candidate.extend(self.generate_knight_moves(from_square))
 
         elif piece_type in (2, 3, 4):
-            candidate.extend(self.generate_sliding_moves(from_square, 
+            candidate.extend(self.generate_sliding_moves(from_square,
                                                          piece_type))
 
         for to_square in candidate:
             promotion_flag = 0
             capture_flag = 0
+            move_piece = piece_type
             if type(to_square) == str:
-                piece_type = tools.char_to_int_piece(to_square[-1])
+                move_piece = tools.char_to_int_piece(to_square[-1])
                 to_square = int(to_square[:-1])
                 promotion_flag = 1
             if self.board.occupants[1 - color] & (1 << to_square):
@@ -187,20 +189,20 @@ class MoveGenerator:
 
             # Piece is pinned and destination is outside of the pin or
             # King is in check and piece destination is not blocking
-            if ((self.pinned_ray_mask & (1 << from_square) and 
-                not self.is_moving_along_pin(from_square, to_square)) or 
-                (self.in_check and 
+            if ((self.pinned_ray_mask & (1 << from_square) and
+                not self.is_moving_along_pin(from_square, to_square)) or
+                (self.in_check and
                  not self.check_ray_mask & (1 << to_square))):
                     continue
-            
-            move = (from_square 
-                    | (to_square << 6) 
-                    | (piece_type << 12) 
-                    | (color << 15) 
+
+            move = (from_square
+                    | (to_square << 6)
+                    | (move_piece << 12)
+                    | (color << 15)
                     | (promotion_flag << 16)
                     | (capture_flag << 17))
             legal_moves.append(move)
-        
+
         return legal_moves
 
     def calculate_attacks_on_king(self):

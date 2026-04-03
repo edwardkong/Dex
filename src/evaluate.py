@@ -69,9 +69,9 @@ QUEEN_TABLE = [
     -10,  0,  0,  0,  0,  0,  0,-10,
     -10,  0,  5,  5,  5,  5,  0,-10,
     -5,  0,  5,  5,  5,  5,  0, -5,
-    0,  0,  5,  5,  5,  5,  0, -5,
-    -10,  5,  5,  5,  5,  5,  0,-10,
-    -10,  0,  5,  0,  0,  0,  0,-10,
+    -5,  0,  5,  5,  5,  5,  0, -5,
+    -10,  5,  5,  5,  5,  5,  5,-10,
+    -10,  0,  0,  0,  0,  0,  0,-10,
     -20,-10,-10, -5, -5,-10,-10,-20
 ]
 
@@ -167,13 +167,13 @@ def evaluate_board(board):
     return evaluation
 
 def update_depth(gamestate):
+    global GAME_PHASE
     color = gamestate.turn
     depth = gamestate.depth
     phase = 0 #0: early, 1: mid, 2: late, 3: end
     pieces_remaining_score = 0
 
     for piece_type in range(5):
-        # int.popbits (?) population bits - only 3.10 +
         num_pieces = bin(gamestate.board.bitboards[piece_type + color * 6]).count('1')
         if piece_type == 0:
             pieces_remaining_score += num_pieces * PAWN_VALUE
@@ -189,7 +189,7 @@ def update_depth(gamestate):
 
         elif piece_type == 4:
             pieces_remaining_score += num_pieces * QUEEN_VALUE
-    
+
     if pieces_remaining_score <= 300:
         depth = 4
         phase = 3
@@ -202,7 +202,7 @@ def update_depth(gamestate):
     else:
         depth = 4
         phase = 0
-    
+
     GAME_PHASE = phase
     return depth, phase
     
@@ -224,12 +224,10 @@ def is_position_quiet(board):
 
         for k in KNIGHT_JUMPS:
             new_rank, new_file = rank + k[0], file + k[1]
-            while (0 <= new_rank < 8 and 0 <= new_file < 8):
+            if 0 <= new_rank < 8 and 0 <= new_file < 8:
                 new_square = 8 * new_rank + new_file
                 if board.bitboards[1 + (1 - color) * 6] & (1 << new_square):
                     return False
-                new_rank += k[0]
-                new_file += k[1]
                 
         if color:
             if board.bitboards[0] & (1 << (piece_square - 9)):

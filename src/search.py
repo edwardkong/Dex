@@ -1,6 +1,6 @@
 from movegenerator import MoveGenerator
 import evaluate
-from transpositiontable import TTEntry
+from transpositiontable import TTEntry, EXACT, LOWERBOUND, UPPERBOUND
 
 # Current implementation is with minimax with alpha beta pruning
 # and iterative deepening and quiescence search.
@@ -41,15 +41,25 @@ class Search:
             eval, move = self.minimax_ab(board, depth, color, alpha, beta)
             self.best_moves[depth] = (eval, move)
 
-            entry = TTEntry(board.zobrist_key, depth, eval, board.commits)
+            entry = TTEntry(board.zobrist_key, depth, eval, board.commits, EXACT)
             self.tt.store_eval(entry)
 
     def minimax_ab(self, board, depth, color, alpha, beta, capture_flag=False):
         self.nodes += 1
+        orig_alpha = alpha
+        orig_beta = beta
+
         tp = self.tt.lookup_key(board.zobrist_key, depth)
         if tp:
-            return tp.eval, None
-        
+            if tp.bound == EXACT:
+                return tp.eval, None
+            elif tp.bound == LOWERBOUND:
+                alpha = max(alpha, tp.eval)
+            elif tp.bound == UPPERBOUND:
+                beta = min(beta, tp.eval)
+            if alpha >= beta:
+                return tp.eval, None
+
         mg = MoveGenerator(board)
         legal_moves = mg.generate_moves()
 
@@ -69,8 +79,8 @@ class Search:
                 return self.eval_func(board), None
 
         ordered_moves = sorted(
-            legal_moves, 
-            key=lambda move: self.order_moves(board, move, depth), 
+            legal_moves,
+            key=lambda move: self.order_moves(board, move, depth),
             reverse=True
             )
 
@@ -79,12 +89,10 @@ class Search:
             best_move = None
             for move in ordered_moves:
                 capture_flag = (move >> 17) & 0x1
-                
+
                 pos = board.sim_move(move)
                 eval, _ = self.minimax_ab(pos, depth - 1, 1, alpha, beta, capture_flag)
 
-                entry = TTEntry(pos.zobrist_key, depth - 1, eval, pos.commits)
-                self.tt.store_eval(entry)
                 if eval > max_eval:
                     max_eval = eval
                     best_move = move
@@ -92,9 +100,19 @@ class Search:
                 alpha = max(alpha, eval)
                 if beta < alpha:
                     break
-            
+
+            # Determine bound type
+            if max_eval <= orig_alpha:
+                bound = UPPERBOUND
+            elif max_eval >= beta:
+                bound = LOWERBOUND
+            else:
+                bound = EXACT
+            entry = TTEntry(board.zobrist_key, depth, max_eval, board.commits, bound)
+            self.tt.store_eval(entry)
+
             return max_eval, best_move
-        
+
         else: # minimizing player
             min_eval = float('inf')
             best_move = None
@@ -103,9 +121,6 @@ class Search:
                 pos = board.sim_move(move)
                 eval, _ = self.minimax_ab(pos, depth - 1, 0, alpha, beta, capture_flag)
 
-                entry = TTEntry(pos.zobrist_key, depth - 1, eval, pos.commits)
-                self.tt.store_eval(entry)
-
                 if eval < min_eval:
                     min_eval = eval
                     best_move = move
@@ -113,6 +128,17 @@ class Search:
                 beta = min(beta, eval)
                 if beta < alpha:
                     break
+
+            # Determine bound type
+            if min_eval >= orig_beta:
+                bound = LOWERBOUND
+            elif min_eval <= alpha:
+                bound = UPPERBOUND
+            else:
+                bound = EXACT
+            entry = TTEntry(board.zobrist_key, depth, min_eval, board.commits, bound)
+            self.tt.store_eval(entry)
+
             return min_eval, best_move
 
     def quiescence_search(self, board, alpha, beta, limit=None):
