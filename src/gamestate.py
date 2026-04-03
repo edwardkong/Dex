@@ -16,7 +16,7 @@ class GameState:
         else:
             self.board = board
         self.tt = TranspositionTable()
-        self.depth = 5
+        self.depth = 6
         self.phase = 0
         self.eval_func = evaluate.evaluate_board
         self.position_history = []  # Zobrist keys for repetition detection

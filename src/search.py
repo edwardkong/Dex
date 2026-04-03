@@ -103,14 +103,16 @@ class Search:
                 return self.eval_func(board), None
 
         # Null move pruning: skip our turn and search at reduced depth
-        # If we can still cause a beta cutoff, prune this branch
+        # Don't use NMP: in check, after a capture, or at shallow depth
+        static_eval = self.eval_func(board)
         if (null_move_allowed and depth >= 3 and not in_check
-                and ply > 0):
+                and not capture_flag and ply > 0
+                and static_eval >= beta):
             R = 2 + (depth > 6)
-            # Make null move (just flip color)
             board.color = 1 - board.color
             null_score, _ = self.negamax(board, depth - 1 - R, ply + 1,
                                          -beta, -beta + 1,
+                                         capture_flag=False,
                                          null_move_allowed=False)
             null_score = -null_score
             board.color = 1 - board.color
