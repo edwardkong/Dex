@@ -148,15 +148,15 @@ class Search:
         if (limit is not None and limit <= 0):
             return stand_pat
 
-        ordered_captures = sorted(mg.generate_forcing_moves(), 
-            key=lambda move: self.priority_moves(board, move), 
+        ordered_captures = sorted(legal_captures,
+            key=lambda move: self.priority_moves(board, move),
             reverse=True)
 
         if board.color == 0:
             max_eval = float('-inf')
             for move in ordered_captures:
                 pos = board.sim_move(move)
-                eval = self.quiescence_search(pos, alpha, beta, None if not limit else limit - 1)
+                eval = self.quiescence_search(pos, alpha, beta, None if limit is None else limit - 1)
                 max_eval = max(max_eval, eval)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
@@ -166,7 +166,7 @@ class Search:
             min_eval = float('inf')
             for move in ordered_captures:
                 pos = board.sim_move(move)
-                eval = self.quiescence_search(pos, alpha, beta, None if not limit else limit - 1)
+                eval = self.quiescence_search(pos, alpha, beta, None if limit is None else limit - 1)
                 min_eval = min(min_eval, eval)
                 beta = min(beta, eval)
                 if beta <= alpha:

@@ -42,13 +42,8 @@ class UCI:
                                     new_game.make_move(given_move)
 
             elif parsed_command[0] == "go":
-                if len(parsed_command) > 1:
-                    if parsed_command[1] == "movetime":
-                        eval, best_move = new_game.search()
-                        print(f"bestmove {tools.int_to_uci(best_move)}")
-                        new_game.make_move(best_move)
-                    elif parsed_command[1] == "infinite":
-                        eval, best_move = new_game.search()
+                if len(parsed_command) > 1 and parsed_command[1] == "infinite":
+                    eval, best_move = new_game.search()
                 else:
                     eval, best_move = new_game.search()
                     print(f"bestmove {tools.int_to_uci(best_move)}")
