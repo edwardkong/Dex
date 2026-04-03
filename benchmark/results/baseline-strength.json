@@ -1,0 +1,198 @@
+{
+  "metadata": {
+    "timestamp": "2026-04-03T17:31:03.526488",
+    "depth": 4,
+    "python": "3.12.4",
+    "engine": "Dex",
+    "num_positions": 12
+  },
+  "positions": [
+    {
+      "name": "Scholar's mate threat",
+      "description": "Must block Qxf7#",
+      "engine_move": "g7g6",
+      "expected": "g7g6",
+      "accepted": [
+        "g7g6"
+      ],
+      "solved": true,
+      "eval": 11,
+      "nodes": 106352,
+      "time_s": 13.3813
+    },
+    {
+      "name": "Fork: knight fork on f7",
+      "description": "Must counter Nxf7 threat with d5",
+      "engine_move": "d7d5",
+      "expected": "d7d5",
+      "accepted": [
+        "d7d5"
+      ],
+      "solved": true,
+      "eval": -35,
+      "nodes": 61892,
+      "time_s": 7.7091
+    },
+    {
+      "name": "Capture hanging piece",
+      "description": "Take the undefended knight",
+      "engine_move": "g4f3",
+      "expected": "g4f3",
+      "accepted": [
+        "g4f3"
+      ],
+      "solved": true,
+      "eval": 83,
+      "nodes": 105809,
+      "time_s": 12.3149
+    },
+    {
+      "name": "Recapture correctly",
+      "description": "Develop and regain pawn",
+      "engine_move": "e2e4",
+      "expected": "e2e3",
+      "accepted": [
+        "e2e3",
+        "e2e4",
+        "g1f3"
+      ],
+      "solved": true,
+      "eval": -98,
+      "nodes": 54309,
+      "time_s": 6.5703
+    },
+    {
+      "name": "Defend attacked piece",
+      "description": "Respond to Ruy Lopez",
+      "engine_move": "g8f6",
+      "expected": "a7a6",
+      "accepted": [
+        "a7a6",
+        "g8f6",
+        "d7d6",
+        "f7f5"
+      ],
+      "solved": true,
+      "eval": 38,
+      "nodes": 53137,
+      "time_s": 7.4883
+    },
+    {
+      "name": "Don't hang the queen",
+      "description": "Queen must not go to f7 (Nc6 defends) or stay attacked",
+      "engine_move": "f1c4",
+      "expected": "h5f3",
+      "accepted": [
+        "h5e2",
+        "h5f3",
+        "h5g4",
+        "h5h4",
+        "h5h3",
+        "h5e5",
+        "h5g5"
+      ],
+      "solved": false,
+      "eval": -41,
+      "nodes": 66460,
+      "time_s": 8.3653
+    },
+    {
+      "name": "Castle to safety",
+      "description": "Castling is a strong option here",
+      "engine_move": "b1c3",
+      "expected": "e1g1",
+      "accepted": [
+        "e1g1",
+        "d2d3",
+        "c2c3"
+      ],
+      "solved": false,
+      "eval": -23,
+      "nodes": 173810,
+      "time_s": 21.8809
+    },
+    {
+      "name": "Win material: pin",
+      "description": "Break the pin or develop",
+      "engine_move": "f8b4",
+      "expected": "f8e7",
+      "accepted": [
+        "f8e7",
+        "f8b4",
+        "h7h6",
+        "d5c4"
+      ],
+      "solved": true,
+      "eval": 5,
+      "nodes": 91599,
+      "time_s": 12.4037
+    },
+    {
+      "name": "Pawn push advantage",
+      "description": "Develop in the Najdorf",
+      "engine_move": "f1d3",
+      "expected": "f1e2",
+      "accepted": [
+        "f1e2",
+        "f2f3",
+        "c1e3",
+        "f1d3"
+      ],
+      "solved": true,
+      "eval": 62,
+      "nodes": 135870,
+      "time_s": 16.2851
+    },
+    {
+      "name": "Trade to simplify when ahead",
+      "description": "Kick the bishop, maintain structure",
+      "engine_move": "b1c3",
+      "expected": "h2h3",
+      "accepted": [
+        "h2h3",
+        "d2d3"
+      ],
+      "solved": false,
+      "eval": -10,
+      "nodes": 56422,
+      "time_s": 6.4536
+    },
+    {
+      "name": "Opening trap avoidance",
+      "description": "Kick the knight, don't play Nxe4 (falls into trap)",
+      "engine_move": "f8d6",
+      "expected": "d7d6",
+      "accepted": [
+        "d7d6",
+        "f8d6"
+      ],
+      "solved": true,
+      "eval": 21,
+      "nodes": 39619,
+      "time_s": 5.6679
+    },
+    {
+      "name": "Central control",
+      "description": "Seize the center vs Caro-Kann",
+      "engine_move": "d2d4",
+      "expected": "d2d4",
+      "accepted": [
+        "d2d4",
+        "g1f3",
+        "b1c3",
+        "d2d3"
+      ],
+      "solved": true,
+      "eval": 63,
+      "nodes": 17919,
+      "time_s": 2.1151
+    }
+  ],
+  "totals": {
+    "solved": 9,
+    "total": 12,
+    "solve_rate": 75.0,
+    "total_nodes": 963198,
+    "total_time_s": 120.6355
+  }
+}

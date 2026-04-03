@@ -16,7 +16,8 @@ from transpositiontable import TTEntry
 
 class Search:
     def __init__(self, tt, depth=None, eval_func=None):
-        self.order = 0 
+        self.order = 0
+        self.nodes = 0
         if eval_func is None:
             self.eval_func = evaluate.evaluate_board
         self.tt = tt
@@ -44,6 +45,7 @@ class Search:
             self.tt.store_eval(entry)
 
     def minimax_ab(self, board, depth, color, alpha, beta, capture_flag=False):
+        self.nodes += 1
         tp = self.tt.lookup_key(board.zobrist_key, depth)
         if tp:
             return tp.eval, None
@@ -114,6 +116,7 @@ class Search:
             return min_eval, best_move
 
     def quiescence_search(self, board, alpha, beta, limit=None):
+        self.nodes += 1
         stand_pat = self.eval_func(board)
         if board.color == 0:
             if stand_pat >= beta:
