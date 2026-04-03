@@ -1,4 +1,7 @@
+import math
+
 from movegenerator import MoveGenerator
+from zobristhash import ZobristHash
 import evaluate
 from evaluate import is_insufficient_material
 from transpositiontable import TTEntry, EXACT, LOWERBOUND, UPPERBOUND
@@ -29,25 +32,24 @@ class Search:
         return self.best_moves[self.max_depth]
 
     def iterative_deepening(self, board):
-        prev_score = 0
-        for depth in range(1, self.max_depth + 1):
-            if depth <= 2:
-                alpha = float('-inf')
-                beta = float('inf')
-            else:
-                # Aspiration window around previous score
-                alpha = prev_score - ASPIRATION_WINDOW
-                beta = prev_score + ASPIRATION_WINDOW
+        depth = self.max_depth
+        prev = self.best_moves.get(depth - 1)
+        if prev is None or depth <= 2:
+            alpha = float('-inf')
+            beta = float('inf')
+        else:
+            # Aspiration window around previous score
+            alpha = prev[0] - ASPIRATION_WINDOW
+            beta = prev[0] + ASPIRATION_WINDOW
 
-            eval_score, move = self.negamax(board, depth, 0, alpha, beta)
+        eval_score, move = self.negamax(board, depth, 0, alpha, beta)
 
-            # Re-search with full window if score fell outside aspiration
-            if eval_score <= alpha or eval_score >= beta:
-                eval_score, move = self.negamax(board, depth, 0,
-                                                float('-inf'), float('inf'))
+        # Re-search with full window if score fell outside aspiration
+        if eval_score <= alpha or eval_score >= beta:
+            eval_score, move = self.negamax(board, depth, 0,
+                                            float('-inf'), float('inf'))
 
-            self.best_moves[depth] = (eval_score, move)
-            prev_score = eval_score
+        self.best_moves[depth] = (eval_score, move)
 
     def negamax(self, board, depth, ply, alpha, beta, capture_flag=False,
                 null_move_allowed=True):
@@ -71,14 +73,15 @@ class Search:
         # TT lookup
         tp = self.tt.lookup_key(board.zobrist_key, depth)
         if tp:
-            if tp.bound == EXACT:
-                return tp.eval, tp.best_move
-            elif tp.bound == LOWERBOUND:
-                alpha = max(alpha, tp.eval)
-            elif tp.bound == UPPERBOUND:
-                beta = min(beta, tp.eval)
-            if alpha >= beta:
-                return tp.eval, tp.best_move
+            if ply > 0:
+                if tp.bound == EXACT:
+                    return tp.eval, tp.best_move
+                elif tp.bound == LOWERBOUND:
+                    alpha = max(alpha, tp.eval)
+                elif tp.bound == UPPERBOUND:
+                    beta = min(beta, tp.eval)
+                if alpha >= beta:
+                    return tp.eval, tp.best_move
 
         mg = MoveGenerator(board)
         legal_moves = mg.generate_moves()
@@ -87,7 +90,7 @@ class Search:
         # No legal moves: checkmate or stalemate
         if not legal_moves:
             if in_check:
-                return -MATE_SCORE - depth, None
+                return -MATE_SCORE + ply, None
             else:
                 return 0, None
 
@@ -97,28 +100,29 @@ class Search:
 
         # Leaf node
         if depth == 0:
-            if capture_flag:
-                return self.quiescence_search(board, alpha, beta, limit=4), None
-            else:
-                return self.eval_func(board), None
+            return self.quiescence_search(board, alpha, beta, limit=4), None
 
         # Null move pruning: skip our turn and search at reduced depth
         # Don't use NMP: in check, after a capture, or at shallow depth
-        static_eval = self.eval_func(board)
         if (null_move_allowed and depth >= 3 and not in_check
-                and not capture_flag and ply > 0
-                and static_eval >= beta):
-            R = 2 + (depth > 6)
-            board.color = 1 - board.color
-            null_score, _ = self.negamax(board, depth - 1 - R, ply + 1,
-                                         -beta, -beta + 1,
-                                         capture_flag=False,
-                                         null_move_allowed=False)
-            null_score = -null_score
-            board.color = 1 - board.color
+                and not capture_flag and ply > 0):
+            static_eval = self.eval_func(board)
+            if static_eval >= beta:
+                R = 2 + (depth > 6)
+                # Flip color and update Zobrist key to match
+                board.color = 1 - board.color
+                board.zobrist_key ^= ZobristHash.table[64]
+                null_score, _ = self.negamax(board, depth - 1 - R, ply + 1,
+                                             -beta, -beta + 1,
+                                             capture_flag=False,
+                                             null_move_allowed=False)
+                null_score = -null_score
+                # Restore color and Zobrist key
+                board.color = 1 - board.color
+                board.zobrist_key ^= ZobristHash.table[64]
 
-            if null_score >= beta:
-                return beta, None
+                if null_score >= beta:
+                    return beta, None
 
         # Order moves
         tt_move = self.tt.lookup_move(board.zobrist_key)
@@ -142,7 +146,9 @@ class Search:
             reduction = 0
             if (moves_searched >= 4 and depth >= 3
                     and not capture_flag and not in_check):
-                reduction = 1
+                reduction = int(math.log(moves_searched) * math.log(depth) / 2.0)
+                reduction = max(reduction, 1)
+                reduction = min(reduction, depth - 2)
 
             eval_score, _ = self.negamax(board, depth - 1 - reduction,
                                          ply + 1, -beta, -alpha, capture_flag)

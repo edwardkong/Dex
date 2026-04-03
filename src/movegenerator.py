@@ -185,7 +185,13 @@ class MoveGenerator:
                 to_square = int(to_square[:-1])
                 promotion_flag = 1
             if self.board.occupants[1 - color] & (1 << to_square):
-                capture_flag = 1 # Doesn't consider EP
+                capture_flag = 1
+            # En passant: diagonal pawn move to empty square
+            elif (piece_type == 0
+                  and self.board.en_passant_flag != -1
+                  and (to_square & 7) == self.board.en_passant_flag
+                  and abs(from_square - to_square) in (7, 9)):
+                capture_flag = 1
 
             # Piece is pinned and destination is outside of the pin or
             # King is in check and piece destination is not blocking
