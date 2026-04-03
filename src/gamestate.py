@@ -8,6 +8,7 @@ import tools
 import sys
 import time
 
+
 class GameState:
     def __init__(self, board: Board=None):
         if board is None:
@@ -30,33 +31,29 @@ class GameState:
                 self.move += 1
                 self.move_history.append(tools.int_to_uci(move))
 
-    # Minimax search
-    def search(self, movetime=None):
-        if movetime:
-            start_time = time.time()
-            elapsed_time_ms = (time.time() - start_time) * 1000
-            
-            searcher = Search(self.tt, self.depth)
-            eval, move = searcher.start_search(self.board)
+    def search(self, time_limit=None):
+        start_time = time.time()
+        searcher = Search(self.tt, self.depth)
 
-            if elapsed_time_ms < float(movetime):
-                time.sleep((float(movetime) - elapsed_time_ms) / 1000)
-        else:
-            searcher = Search(self.tt, self.depth)
-            eval, move = searcher.start_search(self.board)
-        
-        
+        # Search with iterative deepening, reporting info per depth
+        for d in range(1, self.depth + 1):
+            searcher.max_depth = d
+            searcher.nodes = 0
+            searcher.iterative_deepening(self.board)
+            eval_score, move = searcher.best_moves[d]
 
-        return eval, move
-        """
-        print(sys.getsizeof(self.board))
-        print(sys.getsizeof(self))
-        # Monitor transposition table size
-        print(len(self.tt.entries))
-        #print(self.tt.entries)
-        print(sys.getsizeof(self.tt.entries))
-        print(sys.getsizeof(self.tt))
-        """
+            elapsed = time.time() - start_time
+            elapsed_ms = int(elapsed * 1000)
+            nps = int(searcher.nodes / elapsed) if elapsed > 0 else 0
+            print(f"info depth {d} score cp {int(eval_score)} "
+                  f"nodes {searcher.nodes} nps {nps} time {elapsed_ms}")
+            sys.stdout.flush()
+
+            # Time cutoff: don't start next depth if we've used > 50% of time
+            if time_limit and elapsed > time_limit * 0.5:
+                break
+
+        return eval_score, move
 
     def make_move(self, move):
         commital = self.board.is_commital_move(move)

@@ -168,36 +168,28 @@ def evaluate_board(board):
 
 def update_depth(gamestate):
     global GAME_PHASE
-    color = gamestate.turn
     depth = gamestate.depth
     phase = 0 #0: early, 1: mid, 2: late, 3: end
     pieces_remaining_score = 0
 
-    for piece_type in range(5):
-        num_pieces = bin(gamestate.board.bitboards[piece_type + color * 6]).count('1')
-        if piece_type == 0:
-            pieces_remaining_score += num_pieces * PAWN_VALUE
+    piece_values = [PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE]
 
-        elif piece_type == 1:
-            pieces_remaining_score += num_pieces * KNIGHT_VALUE
+    # Count material for BOTH sides
+    for color in range(2):
+        for piece_type in range(5):
+            num_pieces = bin(gamestate.board.bitboards[piece_type + color * 6]).count('1')
+            pieces_remaining_score += num_pieces * piece_values[piece_type]
 
-        elif piece_type == 2:
-            pieces_remaining_score += num_pieces * BISHOP_VALUE
-
-        elif piece_type == 3:
-            pieces_remaining_score += num_pieces * ROOK_VALUE
-
-        elif piece_type == 4:
-            pieces_remaining_score += num_pieces * QUEEN_VALUE
-
-    if pieces_remaining_score <= 300:
-        depth = 4
+    # More material = bigger branching factor = lower depth
+    # Less material = smaller branching factor = higher depth
+    if pieces_remaining_score <= 600:
+        depth = 6
         phase = 3
-    elif pieces_remaining_score <= 1000:
-        depth = 6
+    elif pieces_remaining_score <= 2000:
+        depth = 5
         phase = 2
-    elif pieces_remaining_score <= 1200:
-        depth = 6
+    elif pieces_remaining_score <= 4000:
+        depth = 4
         phase = 1
     else:
         depth = 4

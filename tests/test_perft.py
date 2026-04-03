@@ -60,7 +60,35 @@ class TestPerftStartingPosition:
         assert perft(self.board, 4) == 197281
 
 
-# Note: Deeper perft tests and alternative positions require FEN parsing,
-# which is not yet implemented. The starting position tests above validate
-# the core move generation from the initial board state.
-# Additional position tests will be added after FEN support (Phase 2).
+# Kiwipete — exercises castling, en passant, pins, promotions
+class TestPerftKiwipete:
+    def setup_method(self):
+        self.board = Board.from_fen(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"
+        )
+
+    def test_perft_1(self):
+        assert perft(self.board, 1) == 48
+
+    def test_perft_2(self):
+        assert perft(self.board, 2) == 2039
+
+    def test_perft_3(self):
+        assert perft(self.board, 3) == 97862
+
+
+# Position 3 — en passant discovery, pins
+class TestPerftPosition3:
+    def setup_method(self):
+        self.board = Board.from_fen(
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"
+        )
+
+    def test_perft_1(self):
+        assert perft(self.board, 1) == 14
+
+    def test_perft_2(self):
+        assert perft(self.board, 2) == 191
+
+    def test_perft_3(self):
+        assert perft(self.board, 3) == 2812

@@ -20,6 +20,52 @@ class Board:
         else:
             self.new_board()
 
+    @classmethod
+    def from_fen(cls, fen: str) -> 'Board':
+        """Create a Board from a FEN string."""
+        board = cls()
+        board.bitboards = [0] * 12
+
+        parts = fen.split()
+        ranks = parts[0].split('/')
+
+        piece_map = {
+            'P': 0, 'N': 1, 'B': 2, 'R': 3, 'Q': 4, 'K': 5,
+            'p': 6, 'n': 7, 'b': 8, 'r': 9, 'q': 10, 'k': 11,
+        }
+
+        for rank_idx, rank_str in enumerate(reversed(ranks)):
+            file_idx = 0
+            for ch in rank_str:
+                if ch.isdigit():
+                    file_idx += int(ch)
+                else:
+                    square = rank_idx * 8 + file_idx
+                    board.bitboards[piece_map[ch]] |= (1 << square)
+                    file_idx += 1
+
+        # Side to move
+        board.color = 0 if len(parts) < 2 or parts[1] == 'w' else 1
+
+        # Castling rights
+        board.castling_rights = 0
+        if len(parts) >= 3 and parts[2] != '-':
+            if 'K' in parts[2]: board.castling_rights |= 0b0001
+            if 'Q' in parts[2]: board.castling_rights |= 0b0010
+            if 'k' in parts[2]: board.castling_rights |= 0b0100
+            if 'q' in parts[2]: board.castling_rights |= 0b1000
+
+        # En passant
+        if len(parts) >= 4 and parts[3] != '-':
+            board.en_passant_flag = ord(parts[3][0]) - ord('a')
+        else:
+            board.en_passant_flag = -1
+
+        board.commits = 0
+        board.initialize_occupants()
+        board.zobrist_key = ZobristHash.create_hash_key(board)
+        return board
+
     def copy_board(self):
         copy_board = Board(self)
         return copy_board
