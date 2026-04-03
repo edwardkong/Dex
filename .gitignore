@@ -6,6 +6,8 @@ test.py
 .DS_Store
 .vscode/
 __pycache__/
+.env
+.venv/
 venv/
 src/__pycache__/
 UI/
