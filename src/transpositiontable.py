@@ -5,8 +5,7 @@ EXACT = 0
 LOWERBOUND = 1  # Beta cutoff — true value is >= eval
 UPPERBOUND = 2  # Failed low — true value is <= eval
 
-# Commits used to count the number of commital (irreversible) moves.
-TTEntry = namedtuple('TTEntry', ['key', 'depth', 'eval', 'commits', 'bound'])
+TTEntry = namedtuple('TTEntry', ['key', 'depth', 'eval', 'commits', 'bound', 'best_move'])
 
 class TranspositionTable:
     def __init__(self):
@@ -32,6 +31,15 @@ class TranspositionTable:
         if key in self.entries:
             if self.entries.get(key).depth >= depth:
                 return self.entries[key]
+        return None
+
+    def lookup_move(self, key):
+        """Retrieves the best move from the TT regardless of depth.
+        Used for move ordering when the TT depth is insufficient for cutoff.
+        """
+        entry = self.entries.get(key)
+        if entry:
+            return entry.best_move
         return None
 
     def evict_obsolete(self, commital_count):

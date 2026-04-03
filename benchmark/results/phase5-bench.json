@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "timestamp": "2026-04-03T18:53:17.692615",
+    "depth": 4,
+    "python": "3.12.4",
+    "engine": "Dex"
+  },
+  "positions": [
+    {
+      "name": "Starting position",
+      "nodes": 2728,
+      "time_s": 0.2899,
+      "nps": 9410,
+      "eval": -6,
+      "best_move": "d2d4",
+      "depth": 4
+    },
+    {
+      "name": "After 1. e4",
+      "nodes": 4211,
+      "time_s": 0.4423,
+      "nps": 9521,
+      "eval": -46,
+      "best_move": "d7d5",
+      "depth": 4
+    },
+    {
+      "name": "Italian Game",
+      "nodes": 13373,
+      "time_s": 1.2414,
+      "nps": 10772,
+      "eval": -43,
+      "best_move": "g8f6",
+      "depth": 4
+    },
+    {
+      "name": "Queen's Gambit",
+      "nodes": 5901,
+      "time_s": 0.5544,
+      "nps": 10644,
+      "eval": 55,
+      "best_move": "d5c4",
+      "depth": 4
+    },
+    {
+      "name": "Sicilian Defense",
+      "nodes": 6384,
+      "time_s": 0.6582,
+      "nps": 9699,
+      "eval": -83,
+      "best_move": "e7e5",
+      "depth": 4
+    },
+    {
+      "name": "Ruy Lopez middlegame",
+      "nodes": 20303,
+      "time_s": 1.6865,
+      "nps": 12038,
+      "eval": -40,
+      "best_move": "d7d6",
+      "depth": 4
+    },
+    {
+      "name": "Complex middlegame",
+      "nodes": 8664,
+      "time_s": 0.7173,
+      "nps": 12078,
+      "eval": -3,
+      "best_move": "c4d5",
+      "depth": 4
+    },
+    {
+      "name": "Open position",
+      "nodes": 14744,
+      "time_s": 1.4765,
+      "nps": 9985,
+      "eval": -28,
+      "best_move": "f8b4",
+      "depth": 4
+    },
+    {
+      "name": "Closed position",
+      "nodes": 27167,
+      "time_s": 2.2409,
+      "nps": 12123,
+      "eval": -19,
+      "best_move": "f1d3",
+      "depth": 4
+    },
+    {
+      "name": "Advanced middlegame",
+      "nodes": 17647,
+      "time_s": 1.547,
+      "nps": 11407,
+      "eval": 14,
+      "best_move": "c1e3",
+      "depth": 4
+    }
+  ],
+  "totals": {
+    "total_nodes": 121122,
+    "total_time_s": 10.8544,
+    "avg_nps": 11158
+  }
+}
