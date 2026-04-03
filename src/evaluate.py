@@ -252,6 +252,33 @@ def _eval_pieces(board, color):
     return score
 
 
+def is_insufficient_material(board):
+    """Check if neither side can checkmate: K vs K, K+B vs K, K+N vs K."""
+    # Any pawns, rooks, or queens means sufficient material
+    for color in range(2):
+        if board.bitboards[0 + color * 6]:  # Pawns
+            return False
+        if board.bitboards[3 + color * 6]:  # Rooks
+            return False
+        if board.bitboards[4 + color * 6]:  # Queens
+            return False
+
+    # Count minor pieces (knights + bishops)
+    total_minors = 0
+    for color in range(2):
+        knights = board.bitboards[1 + color * 6]
+        bishops = board.bitboards[2 + color * 6]
+        while knights:
+            total_minors += 1
+            knights &= knights - 1
+        while bishops:
+            total_minors += 1
+            bishops &= bishops - 1
+
+    # K vs K, or K+minor vs K
+    return total_minors <= 1
+
+
 def push_king(board):
     enemy_king_square = tools.bitscan_lsb(board.bitboards[5 + (1 - board.color) * 6])
     e_rank = enemy_king_square >> 3

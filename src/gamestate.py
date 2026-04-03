@@ -19,23 +19,29 @@ class GameState:
         self.depth = 5
         self.phase = 0
         self.eval_func = evaluate.evaluate_board
+        self.position_history = []  # Zobrist keys for repetition detection
+        self.halfmove_clock = 0  # For 50-move rule
 
     def newGameUCI(self, moves=None):
         self.turn = 0  # WHITE = 0; BLACK = 1
         self.move = 1  # Move number (Ply)
         self.move_history = []
+        self.position_history = [self.board.zobrist_key]
+        self.halfmove_clock = 0
         if moves:
             for move in moves:
                 self.board.make_move(move)
                 self.turn = 1 - self.turn
                 self.move += 1
                 self.move_history.append(tools.int_to_uci(move))
+                self.position_history.append(self.board.zobrist_key)
 
     def search(self, time_limit=None):
         start_time = time.time()
-        searcher = Search(self.tt, self.depth)
+        searcher = Search(self.tt, self.depth,
+                          position_history=self.position_history,
+                          halfmove_clock=self.halfmove_clock)
 
-        # Search with iterative deepening, reporting info per depth
         for d in range(1, self.depth + 1):
             searcher.max_depth = d
             searcher.nodes = 0
@@ -49,7 +55,6 @@ class GameState:
                   f"nodes {searcher.nodes} nps {nps} time {elapsed_ms}")
             sys.stdout.flush()
 
-            # Time cutoff: don't start next depth if we've used > 50% of time
             if time_limit and elapsed > time_limit * 0.5:
                 break
 
@@ -62,8 +67,17 @@ class GameState:
         self.turn = 1 - self.turn
         self.move += 1
         self.move_history.append(tools.int_to_uci(move))
+        self.position_history.append(self.board.zobrist_key)
 
-        # Increase depth if endgame
+        # Update halfmove clock
+        from_square = move & 0x3F
+        piece_type = (move >> 12) & 0x7
+        capture_flag = (move >> 17) & 0x1
+        if piece_type == 0 or capture_flag or commital:
+            self.halfmove_clock = 0
+        else:
+            self.halfmove_clock += 1
+
         if self.move > 2:
             self.depth, self.phase = evaluate.update_depth(self)
 

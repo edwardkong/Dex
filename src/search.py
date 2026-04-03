@@ -1,5 +1,6 @@
 from movegenerator import MoveGenerator
 import evaluate
+from evaluate import is_insufficient_material
 from transpositiontable import TTEntry, EXACT, LOWERBOUND, UPPERBOUND
 
 MATE_SCORE = 100000
@@ -8,7 +9,8 @@ ASPIRATION_WINDOW = 50
 
 
 class Search:
-    def __init__(self, tt, depth=None, eval_func=None):
+    def __init__(self, tt, depth=None, eval_func=None,
+                 position_history=None, halfmove_clock=0):
         self.nodes = 0
         if eval_func is None:
             self.eval_func = evaluate.evaluate_board
@@ -19,6 +21,8 @@ class Search:
         self.max_depth = depth
         self.killers = [[None, None] for _ in range(MAX_PLY)]
         self.history = [[[0] * 64 for _ in range(64)] for _ in range(2)]
+        self.position_history = list(position_history) if position_history else []
+        self.halfmove_clock = halfmove_clock
 
     def start_search(self, board):
         self.iterative_deepening(board)
@@ -50,6 +54,19 @@ class Search:
         self.nodes += 1
         orig_alpha = alpha
         in_check = False
+
+        # Draw detection (skip at root)
+        if ply > 0:
+            # 50-move rule
+            if self.halfmove_clock + ply >= 100:
+                return 0, None
+            # Threefold repetition
+            key = board.zobrist_key
+            if self.position_history.count(key) >= 2:
+                return 0, None
+            # Insufficient material
+            if is_insufficient_material(board):
+                return 0, None
 
         # TT lookup
         tp = self.tt.lookup_key(board.zobrist_key, depth)
@@ -117,6 +134,7 @@ class Search:
             capture_flag = (move >> 17) & 0x1
 
             undo = board.make_move(move)
+            self.position_history.append(board.zobrist_key)
 
             # Late move reductions: reduce depth for late quiet moves
             reduction = 0
@@ -134,6 +152,7 @@ class Search:
                                              -beta, -alpha, capture_flag)
                 eval_score = -eval_score
 
+            self.position_history.pop()
             board.unmake_move(undo)
             moves_searched += 1
 
