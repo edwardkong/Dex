@@ -256,8 +256,8 @@ class MoveGenerator:
                             break
 
                     # Opponent piece moves along ray
-                    if ((piece_type == 4) or 
-                        (diag and piece_type == 2) or 
+                    if ((piece_type == 4) or
+                        (diag and piece_type == 2) or
                         ((not diag) and (piece_type == 3))):
                         # Piece is pinned
                         if friendly_piece_encountered:
@@ -272,13 +272,12 @@ class MoveGenerator:
                             xray_file = king_file - d[1]
                             xray_sq = 8 * xray_rank + xray_file
                             if 0 <= xray_rank < 8 and 0 <= xray_file < 8:
-                                if not (self.board.occupants[color] 
+                                if not (self.board.occupants[color]
                                         & (1 << xray_sq)):
                                     self.attacked_ray_mask |= (1 << xray_sq)
 
-                    # Opponent piece does not have sight
-                    else:
-                        break
+                    # Opponent piece blocks the ray regardless
+                    break
 
                 new_rank += d[0]
                 new_file += d[1]
