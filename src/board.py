@@ -105,11 +105,26 @@ class Board:
         self.castling_rights = 0b1111
 
     def make_move(self, move):
-        """Updates the board given a move."""
+        """Updates the board given a move. Returns undo info for unmake_move."""
+        undo = (
+            list(self.bitboards),
+            list(self.occupants),
+            self.castling_rights,
+            self.en_passant_flag,
+            self.zobrist_key,
+            self.commits,
+            self.color,
+        )
         self.update_board(move)
         self.refresh_occupant_bitboards()
         self.color = 1 - self.color
-        return self
+        return undo
+
+    def unmake_move(self, undo):
+        """Restores the board to the state before make_move."""
+        (self.bitboards, self.occupants, self.castling_rights,
+         self.en_passant_flag, self.zobrist_key, self.commits,
+         self.color) = undo
 
     def is_castling(self, from_square, to_square, piece_type):
         """Checks if a move is castle."""

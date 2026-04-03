@@ -90,8 +90,9 @@ class Search:
             for move in ordered_moves:
                 capture_flag = (move >> 17) & 0x1
 
-                pos = board.sim_move(move)
-                eval, _ = self.minimax_ab(pos, depth - 1, 1, alpha, beta, capture_flag)
+                undo = board.make_move(move)
+                eval, _ = self.minimax_ab(board, depth - 1, 1, alpha, beta, capture_flag)
+                board.unmake_move(undo)
 
                 if eval > max_eval:
                     max_eval = eval
@@ -118,8 +119,9 @@ class Search:
             best_move = None
             for move in ordered_moves:
                 capture_flag = (move >> 17) & 0x1
-                pos = board.sim_move(move)
-                eval, _ = self.minimax_ab(pos, depth - 1, 0, alpha, beta, capture_flag)
+                undo = board.make_move(move)
+                eval, _ = self.minimax_ab(board, depth - 1, 0, alpha, beta, capture_flag)
+                board.unmake_move(undo)
 
                 if eval < min_eval:
                     min_eval = eval
@@ -181,8 +183,9 @@ class Search:
         if board.color == 0:
             max_eval = float('-inf')
             for move in ordered_captures:
-                pos = board.sim_move(move)
-                eval = self.quiescence_search(pos, alpha, beta, None if limit is None else limit - 1)
+                undo = board.make_move(move)
+                eval = self.quiescence_search(board, alpha, beta, None if limit is None else limit - 1)
+                board.unmake_move(undo)
                 max_eval = max(max_eval, eval)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
@@ -191,8 +194,9 @@ class Search:
         else:
             min_eval = float('inf')
             for move in ordered_captures:
-                pos = board.sim_move(move)
-                eval = self.quiescence_search(pos, alpha, beta, None if limit is None else limit - 1)
+                undo = board.make_move(move)
+                eval = self.quiescence_search(board, alpha, beta, None if limit is None else limit - 1)
+                board.unmake_move(undo)
                 min_eval = min(min_eval, eval)
                 beta = min(beta, eval)
                 if beta <= alpha:
