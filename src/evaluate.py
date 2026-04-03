@@ -120,7 +120,7 @@ def evaluate_board(board):
         king_table_gamestate = KING_TABLE
 
     if GAME_PHASE == 3:
-        evaluation += (push_king(board) * 15 * (-1 if turn else 1))
+        evaluation += push_king(board) * 15
 
     for piece in range(12):
         piece_type = piece % 6
@@ -164,7 +164,8 @@ def evaluate_board(board):
     if board.castling_rights & 0b11:
         evaluation += 8
 
-    return evaluation
+    # Return relative to side to move (positive = good for side to move)
+    return evaluation if board.color == 0 else -evaluation
 
 def update_depth(gamestate):
     global GAME_PHASE
