@@ -183,11 +183,26 @@ _CASTLED_SQUARES = frozenset((6, 2, 62, 58))
 # Center files d(3) and e(4)
 _CENTER_FILES = frozenset((3, 4))
 
-# Mobility bonuses per piece type (kept small to avoid overriding material)
-_MOBILITY_KNIGHT = 2
-_MOBILITY_BISHOP = 2
-_MOBILITY_ROOK = 1
-_MOBILITY_QUEEN = 1
+# Mobility bonus tables per piece type (indexed by safe-square count).
+# Inspired by Stockfish pre-NNUE: non-linear curves with steep penalties
+# for restricted pieces and diminishing returns for high mobility.
+# The key insight is that mobility acts as a PENALTY for trapped/cramped
+# pieces rather than a reward for active ones.  A piece with average
+# mobility contributes ~0; only below-average mobility hurts.
+#
+#                  0    1    2    3    4    5    6    7    8
+_MOB_KNIGHT = [ -60, -40, -20,  -8,   0,   4,   7,   9,  10]
+
+#                  0    1    2    3    4    5    6    7    8    9   10   11   12   13
+_MOB_BISHOP = [ -50, -30, -15,  -6,   0,   4,   7,   9,  11,  12,  13,  13,  13,  13]
+
+#                  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14
+_MOB_ROOK   = [ -40, -25, -12,  -5,   0,   3,   5,   7,   8,   9,  10,  10,  10,  10,  10]
+
+#                  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15
+_MOB_QUEEN  = [ -30, -18,  -8,  -3,   0,   1,   2,   3,   3,   3,   3,   3,   3,   3,   3,   3]
+
+_MOB_TABLES = {1: _MOB_KNIGHT, 2: _MOB_BISHOP, 3: _MOB_ROOK, 4: _MOB_QUEEN}
 
 # Ray directions for sliding pieces
 _BISHOP_DIRS = ((1, 1), (1, -1), (-1, 1), (-1, -1))
@@ -420,65 +435,126 @@ def _count_mobility(board, color, piece_type_idx, unsafe_mask=0):
     return total_squares
 
 
-# Average safe mobility for each piece type (baseline for scaling).
-# These are slightly lower than raw mobility averages because unsafe
-# squares are now excluded from the count.
-_AVG_MOBILITY = {1: 4, 2: 6, 3: 6, 4: 9}
-
-
 def _eval_mobility(board, color):
-    """Evaluate safe mobility as a scaling factor on piece value.
+    """Evaluate safe mobility via non-linear per-piece-type lookup tables.
 
-    Only squares NOT attacked by lower-value enemy pieces count toward
-    a piece's mobility.  This naturally penalizes pieces that venture
-    into territory controlled by enemy pawns or minors (e.g. an early
-    queen sortie) and rewards pieces on safe, stable squares.
+    Uses the Stockfish pre-NNUE approach: steep penalties for restricted
+    pieces (trapped/cramped) with diminishing returns above average
+    mobility.  A piece with normal mobility contributes ~0; only
+    below-average mobility hurts significantly.
 
-    Scaling: 2% of piece value per square above/below average.
+    Each piece is evaluated INDIVIDUALLY -- its safe-square count is
+    clamped to the table length and looked up directly.  No division
+    or multiplication; just one table read per piece on the board.
     """
     enemy = 1 - color
+    friendly = board.occupants[color]
+    all_occ = board.occupants[2]
 
-    # Compute enemy pawn attack mask (squares attacked by enemy pawns)
+    # Build unsafe masks once for all piece types
     enemy_pawn_attacks = _compute_pawn_attacks(board, enemy)
-
-    # Compute enemy minor attack mask (squares attacked by enemy knights/bishops)
     enemy_minor_attacks = _compute_minor_attacks(board, enemy)
-
-    # Combined mask of squares attacked by enemy pawns OR minors
     enemy_pawn_and_minor_attacks = enemy_pawn_attacks | enemy_minor_attacks
 
     score = 0
-    for piece_type_idx in (1, 2, 3, 4):
-        pieces = board.bitboards[piece_type_idx + color * 6]
-        if not pieces:
-            continue
 
-        # Determine which squares are unsafe for this piece type:
-        # - Knights/Bishops: exclude squares attacked by enemy pawns
-        # - Rooks: exclude squares attacked by enemy pawns
-        # - Queens: exclude squares attacked by enemy pawns OR minors
-        if piece_type_idx in (1, 2, 3):
-            unsafe = enemy_pawn_attacks
-        else:  # Queen
-            unsafe = enemy_pawn_and_minor_attacks
+    # --- Knights (table max index 8) ---
+    pieces = board.bitboards[1 + color * 6]
+    if pieces:
+        table = _MOB_KNIGHT
+        max_idx = 8
+        unsafe = enemy_pawn_attacks
+        while pieces:
+            sq = tools.bitscan_lsb(pieces)
+            safe = KNIGHT_ATTACKS[sq] & ~friendly & ~unsafe
+            # Popcount via bit trick
+            count = 0
+            temp = safe
+            while temp:
+                count += 1
+                temp &= temp - 1
+            score += table[min(count, max_idx)]
+            pieces &= pieces - 1
 
-        squares = _count_mobility(board, color, piece_type_idx, unsafe)
+    # --- Bishops (table max index 13) ---
+    pieces = board.bitboards[2 + color * 6]
+    if pieces:
+        table = _MOB_BISHOP
+        max_idx = 13
+        unsafe = enemy_pawn_attacks
+        while pieces:
+            sq = tools.bitscan_lsb(pieces)
+            rank = sq >> 3
+            file = sq & 7
+            count = 0
+            for dr, df in _BISHOP_DIRS:
+                r, f = rank + dr, file + df
+                while 0 <= r < 8 and 0 <= f < 8:
+                    target_bit = 1 << (r * 8 + f)
+                    if friendly & target_bit:
+                        break
+                    if not (unsafe & target_bit):
+                        count += 1
+                    if all_occ & target_bit:
+                        break
+                    r += dr
+                    f += df
+            score += table[min(count, max_idx)]
+            pieces &= pieces - 1
 
-        # Count pieces of this type
-        count = 0
-        temp = pieces
-        while temp:
-            count += 1
-            temp &= temp - 1
-        avg = _AVG_MOBILITY[piece_type_idx] * count
-        diff = squares - avg
-        # Scale mobility bonus by piece type:
-        # Knights/bishops: 3% of value (~10cp/sq) — development matters most
-        # Rooks: 2% of value (~10cp/sq)
-        # Queens: 0.5% of value (~4.5cp/sq) — queens are naturally mobile,
-        #   don't over-reward; let minor piece underdevelopment dominate
-        divisor = {1: 33, 2: 33, 3: 50, 4: 200}[piece_type_idx]
-        score += diff * PIECE_VALUES[piece_type_idx] // divisor
+    # --- Rooks (table max index 14) ---
+    pieces = board.bitboards[3 + color * 6]
+    if pieces:
+        table = _MOB_ROOK
+        max_idx = 14
+        unsafe = enemy_pawn_attacks
+        while pieces:
+            sq = tools.bitscan_lsb(pieces)
+            rank = sq >> 3
+            file = sq & 7
+            count = 0
+            for dr, df in _ROOK_DIRS:
+                r, f = rank + dr, file + df
+                while 0 <= r < 8 and 0 <= f < 8:
+                    target_bit = 1 << (r * 8 + f)
+                    if friendly & target_bit:
+                        break
+                    if not (unsafe & target_bit):
+                        count += 1
+                    if all_occ & target_bit:
+                        break
+                    r += dr
+                    f += df
+            score += table[min(count, max_idx)]
+            pieces &= pieces - 1
+
+    # --- Queens (table max index 15) ---
+    pieces = board.bitboards[4 + color * 6]
+    if pieces:
+        table = _MOB_QUEEN
+        max_idx = 15
+        unsafe = enemy_pawn_and_minor_attacks
+        dirs = _BISHOP_DIRS + _ROOK_DIRS
+        while pieces:
+            sq = tools.bitscan_lsb(pieces)
+            rank = sq >> 3
+            file = sq & 7
+            count = 0
+            for dr, df in dirs:
+                r, f = rank + dr, file + df
+                while 0 <= r < 8 and 0 <= f < 8:
+                    target_bit = 1 << (r * 8 + f)
+                    if friendly & target_bit:
+                        break
+                    if not (unsafe & target_bit):
+                        count += 1
+                    if all_occ & target_bit:
+                        break
+                    r += dr
+                    f += df
+            score += table[min(count, max_idx)]
+            pieces &= pieces - 1
+
     return score
 
 
