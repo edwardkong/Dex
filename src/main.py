@@ -1,5 +1,6 @@
 from gamestate import GameState
 from board import Board
+from book import OpeningBook
 import tools
 import evaluate
 import sys
@@ -12,6 +13,7 @@ class UCI:
         new_game = GameState()
         new_game.newGameUCI()
         best_move = None
+        opening_book = OpeningBook()
 
         while True:
             try:
@@ -96,11 +98,18 @@ class UCI:
                         increment = params.get("binc", 0)
                     time_limit = (remaining / 20.0 + increment * 0.75) / 1000.0
 
-                eval_score, best_move = new_game.search(time_limit=time_limit)
-
-                if "infinite" not in params:
-                    print(f"bestmove {tools.int_to_uci(best_move)}")
+                # Try opening book first
+                book_move = opening_book.probe(new_game.move_history)
+                if book_move and "infinite" not in params:
+                    print(f"info string book move {book_move}")
+                    print(f"bestmove {book_move}")
                     sys.stdout.flush()
+                else:
+                    eval_score, best_move = new_game.search(time_limit=time_limit)
+
+                    if "infinite" not in params:
+                        print(f"bestmove {tools.int_to_uci(best_move)}")
+                        sys.stdout.flush()
 
             elif parsed_command[0] == "stop":
                 if best_move is not None:
