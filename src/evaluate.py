@@ -151,6 +151,10 @@ PIECE_TABLES_EG = [PAWN_TABLE_END, KNIGHT_TABLE_END, BISHOP_TABLE_END, ROOK_TABL
 PIECE_TABLES = PIECE_TABLES_MG
 PIECE_TABLES_END = PIECE_TABLES_EG
 
+# File and edge masks
+FILE_A = 0x0101010101010101
+FILE_H = 0x8080808080808080
+
 # File masks for pawn structure evaluation
 FILE_MASKS = [0x0101010101010101 << f for f in range(8)]
 ADJACENT_FILE_MASKS = [0] * 8
@@ -320,8 +324,57 @@ def _eval_king_safety(board, color, phase):
     return int(score * phase)
 
 
-def _count_mobility(board, color, piece_type_idx):
-    """Count available squares for a piece type using ray casting."""
+def _compute_pawn_attacks(board, color):
+    """Compute the set of squares attacked by pawns of the given color.
+
+    White pawns attack NE (+9) and NW (+7); black pawns attack SE (-7) and SW (-9).
+    Edge files are masked out to prevent wrap-around.
+    """
+    pawns = board.bitboards[0 + color * 6]
+    if color == 0:  # White
+        return ((pawns << 7) & ~FILE_H) | ((pawns << 9) & ~FILE_A)
+    else:  # Black
+        return ((pawns >> 9) & ~FILE_H) | ((pawns >> 7) & ~FILE_A)
+
+
+def _compute_minor_attacks(board, color):
+    """Compute the set of squares attacked by knights and bishops of the given color."""
+    attacks = 0
+    all_occ = board.occupants[2]
+
+    # Knight attacks
+    knights = board.bitboards[1 + color * 6]
+    while knights:
+        sq = tools.bitscan_lsb(knights)
+        attacks |= KNIGHT_ATTACKS[sq]
+        knights &= knights - 1
+
+    # Bishop attacks (ray cast)
+    bishops = board.bitboards[2 + color * 6]
+    while bishops:
+        sq = tools.bitscan_lsb(bishops)
+        rank = sq >> 3
+        file = sq & 7
+        for dr, df in _BISHOP_DIRS:
+            r, f = rank + dr, file + df
+            while 0 <= r < 8 and 0 <= f < 8:
+                target_bit = 1 << (r * 8 + f)
+                attacks |= target_bit
+                if all_occ & target_bit:
+                    break
+                r += dr
+                f += df
+        bishops &= bishops - 1
+
+    return attacks
+
+
+def _count_mobility(board, color, piece_type_idx, unsafe_mask=0):
+    """Count available squares for a piece type using ray casting.
+
+    Squares in unsafe_mask are excluded -- these are squares attacked by
+    lower-value enemy pieces where the piece would be liable to be chased away.
+    """
     friendly = board.occupants[color]
     all_occ = board.occupants[2]
     total_squares = 0
@@ -330,8 +383,9 @@ def _count_mobility(board, color, piece_type_idx):
         pieces = board.bitboards[1 + color * 6]
         while pieces:
             sq = tools.bitscan_lsb(pieces)
-            attacks = KNIGHT_ATTACKS[sq] & ~friendly
-            temp = attacks
+            # Exclude friendly pieces and unsafe squares
+            safe_attacks = KNIGHT_ATTACKS[sq] & ~friendly & ~unsafe_mask
+            temp = safe_attacks
             while temp:
                 total_squares += 1
                 temp &= temp - 1
@@ -354,7 +408,9 @@ def _count_mobility(board, color, piece_type_idx):
                     target_bit = 1 << (r * 8 + f)
                     if friendly & target_bit:
                         break
-                    total_squares += 1
+                    # Only count squares not attacked by lower-value pieces
+                    if not (unsafe_mask & target_bit):
+                        total_squares += 1
                     if all_occ & target_bit:
                         break
                     r += dr
@@ -364,24 +420,50 @@ def _count_mobility(board, color, piece_type_idx):
     return total_squares
 
 
-# Average mobility for each piece type (used as baseline for scaling)
-_AVG_MOBILITY = {1: 5, 2: 7, 3: 7, 4: 14}
+# Average safe mobility for each piece type (baseline for scaling).
+# These are slightly lower than raw mobility averages because unsafe
+# squares are now excluded from the count.
+_AVG_MOBILITY = {1: 4, 2: 6, 3: 6, 4: 9}
 
 
 def _eval_mobility(board, color):
-    """Evaluate mobility as a scaling factor on piece value.
+    """Evaluate safe mobility as a scaling factor on piece value.
 
-    A piece at average mobility gets no bonus/penalty.
-    Above average: small bonus proportional to piece value.
-    Below average: small penalty proportional to piece value.
-    Scaling factor: 2% of piece value per square above/below average.
+    Only squares NOT attacked by lower-value enemy pieces count toward
+    a piece's mobility.  This naturally penalizes pieces that venture
+    into territory controlled by enemy pawns or minors (e.g. an early
+    queen sortie) and rewards pieces on safe, stable squares.
+
+    Scaling: 2% of piece value per square above/below average.
     """
+    enemy = 1 - color
+
+    # Compute enemy pawn attack mask (squares attacked by enemy pawns)
+    enemy_pawn_attacks = _compute_pawn_attacks(board, enemy)
+
+    # Compute enemy minor attack mask (squares attacked by enemy knights/bishops)
+    enemy_minor_attacks = _compute_minor_attacks(board, enemy)
+
+    # Combined mask of squares attacked by enemy pawns OR minors
+    enemy_pawn_and_minor_attacks = enemy_pawn_attacks | enemy_minor_attacks
+
     score = 0
     for piece_type_idx in (1, 2, 3, 4):
         pieces = board.bitboards[piece_type_idx + color * 6]
         if not pieces:
             continue
-        squares = _count_mobility(board, color, piece_type_idx)
+
+        # Determine which squares are unsafe for this piece type:
+        # - Knights/Bishops: exclude squares attacked by enemy pawns
+        # - Rooks: exclude squares attacked by enemy pawns
+        # - Queens: exclude squares attacked by enemy pawns OR minors
+        if piece_type_idx in (1, 2, 3):
+            unsafe = enemy_pawn_attacks
+        else:  # Queen
+            unsafe = enemy_pawn_and_minor_attacks
+
+        squares = _count_mobility(board, color, piece_type_idx, unsafe)
+
         # Count pieces of this type
         count = 0
         temp = pieces
