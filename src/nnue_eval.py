@@ -25,7 +25,9 @@ class NNUEEvaluator:
         self.b2 = data['net.2.bias']    # (hidden2,)
         self.w3 = data['net.4.weight']  # (1, hidden2)
         self.b3 = data['net.4.bias']    # (1,)
-        self.eval_scale = float(data['eval_scale'][0])
+        self.use_wdl = bool(data.get('use_wdl', [0])[0])
+        if not self.use_wdl:
+            self.eval_scale = float(data['eval_scale'][0])
 
     def _board_to_features(self, board) -> np.ndarray:
         """Convert a Dex Board to a 768-element feature vector.
@@ -71,10 +73,19 @@ class NNUEEvaluator:
     def evaluate(self, board) -> int:
         """Evaluate a position. Returns centipawns, side-to-move relative."""
         features = self._board_to_features(board)
-        raw_score = self._forward(features)
-        score_cp = raw_score * self.eval_scale
+        logit = self._forward(features)
 
-        # If black to move, the feature flip already handled perspective
+        if self.use_wdl:
+            # Convert logit -> sigmoid -> centipawns
+            # sigmoid(logit) gives WDL probability, convert back to cp
+            # Clamp logit to avoid overflow
+            logit = max(-10.0, min(10.0, logit))
+            wdl = 1.0 / (1.0 + np.exp(-logit))
+            wdl = max(0.001, min(0.999, wdl))
+            score_cp = 400.0 * np.log(wdl / (1.0 - wdl))
+        else:
+            score_cp = logit * self.eval_scale
+
         return int(score_cp)
 
 

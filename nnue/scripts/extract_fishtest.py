@@ -57,7 +57,8 @@ def board_to_features(board: chess.Board) -> np.ndarray:
 
 
 # Fishtest comment format: {+0.91/21 1.749s} or {-0.91/21 1.749s} or {M5/21 1.0s}
-FISHTEST_EVAL_RE = re.compile(r'\{([+-]?\d+\.\d+|[+-]?M\d+)/(\d+)\s')
+# python-chess strips curly braces from comments
+FISHTEST_EVAL_RE = re.compile(r'([+-]?\d+\.\d+|[+-]?M\d+)/(\d+)\s')
 
 
 def parse_fishtest_comment(comment: str):
@@ -68,6 +69,8 @@ def parse_fishtest_comment(comment: str):
 
     eval_str = match.group(1)
     depth = int(match.group(2))
+    # Strip leading + sign
+    eval_str = eval_str.lstrip('+')
 
     if 'M' in eval_str:
         # Mate score
