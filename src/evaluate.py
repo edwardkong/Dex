@@ -183,24 +183,20 @@ _CASTLED_SQUARES = frozenset((6, 2, 62, 58))
 # Center files d(3) and e(4)
 _CENTER_FILES = frozenset((3, 4))
 
-# Mobility bonus tables per piece type (indexed by safe-square count).
-# Inspired by Stockfish pre-NNUE: non-linear curves with steep penalties
-# for restricted pieces and diminishing returns for high mobility.
-# The key insight is that mobility acts as a PENALTY for trapped/cramped
-# pieces rather than a reward for active ones.  A piece with average
-# mobility contributes ~0; only below-average mobility hurts.
+# Mobility tables: subtle factor, not a dominant eval term.
+# Penalizes severely restricted pieces, near-zero otherwise.
 #
 #                  0    1    2    3    4    5    6    7    8
-_MOB_KNIGHT = [ -60, -40, -20,  -8,   0,   4,   7,   9,  10]
+_MOB_KNIGHT = [ -20, -12,  -5,  -2,   0,   1,   2,   3,   3]
 
 #                  0    1    2    3    4    5    6    7    8    9   10   11   12   13
-_MOB_BISHOP = [ -50, -30, -15,  -6,   0,   4,   7,   9,  11,  12,  13,  13,  13,  13]
+_MOB_BISHOP = [ -15, -10,  -4,  -1,   0,   1,   2,   3,   3,   3,   3,   3,   3,   3]
 
 #                  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14
-_MOB_ROOK   = [ -40, -25, -12,  -5,   0,   3,   5,   7,   8,   9,  10,  10,  10,  10,  10]
+_MOB_ROOK   = [ -12,  -8,  -3,  -1,   0,   1,   2,   2,   2,   2,   2,   2,   2,   2,   2]
 
 #                  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15
-_MOB_QUEEN  = [ -30, -18,  -8,  -3,   0,   1,   2,   3,   3,   3,   3,   3,   3,   3,   3,   3]
+_MOB_QUEEN  = [  -8,  -4,  -2,  -1,   0,   0,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1]
 
 _MOB_TABLES = {1: _MOB_KNIGHT, 2: _MOB_BISHOP, 3: _MOB_ROOK, 4: _MOB_QUEEN}
 
