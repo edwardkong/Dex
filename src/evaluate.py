@@ -99,8 +99,57 @@ KING_TABLE_END = [
     -50, -30, -30, -30, -30, -30, -30, -50
 ]
 
-PIECE_TABLES = [PAWN_TABLE, KNIGHT_TABLE, BISHOP_TABLE, ROOK_TABLE, QUEEN_TABLE, KING_TABLE]
-PIECE_TABLES_END = [PAWN_TABLE_END, KNIGHT_TABLE, BISHOP_TABLE, ROOK_TABLE, QUEEN_TABLE, KING_TABLE_END]
+# Endgame-specific tables for pieces (centralization matters more)
+KNIGHT_TABLE_END = [
+    -50,-30,-30,-30,-30,-30,-30,-50,
+    -30,-20,  0,  0,  0,  0,-20,-30,
+    -30,  0, 10, 15, 15, 10,  0,-30,
+    -30,  5, 15, 25, 25, 15,  5,-30,
+    -30,  5, 15, 25, 25, 15,  5,-30,
+    -30,  0, 10, 15, 15, 10,  0,-30,
+    -30,-20,  0,  0,  0,  0,-20,-30,
+    -50,-30,-30,-30,-30,-30,-30,-50
+]
+
+BISHOP_TABLE_END = [
+    -20,-10,-10,-10,-10,-10,-10,-20,
+    -10,  0,  0,  0,  0,  0,  0,-10,
+    -10,  0, 10, 10, 10, 10,  0,-10,
+    -10,  0, 10, 15, 15, 10,  0,-10,
+    -10,  0, 10, 15, 15, 10,  0,-10,
+    -10,  0, 10, 10, 10, 10,  0,-10,
+    -10,  0,  0,  0,  0,  0,  0,-10,
+    -20,-10,-10,-10,-10,-10,-10,-20
+]
+
+ROOK_TABLE_END = [
+    0,  0,  0,  0,  0,  0,  0,  0,
+    5, 10, 10, 10, 10, 10, 10,  5,
+    0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  5,  5,  0,  0,  0
+]
+
+QUEEN_TABLE_END = [
+    -20,-10,-10, -5, -5,-10,-10,-20,
+    -10,  0,  5,  5,  5,  5,  0,-10,
+    -10,  5,  5, 10, 10,  5,  5,-10,
+    -5,  5, 10, 15, 15, 10,  5, -5,
+    -5,  5, 10, 15, 15, 10,  5, -5,
+    -10,  5,  5, 10, 10,  5,  5,-10,
+    -10,  0,  5,  5,  5,  5,  0,-10,
+    -20,-10,-10, -5, -5,-10,-10,-20
+]
+
+PIECE_TABLES_MG = [PAWN_TABLE, KNIGHT_TABLE, BISHOP_TABLE, ROOK_TABLE, QUEEN_TABLE, KING_TABLE]
+PIECE_TABLES_EG = [PAWN_TABLE_END, KNIGHT_TABLE_END, BISHOP_TABLE_END, ROOK_TABLE_END, QUEEN_TABLE_END, KING_TABLE_END]
+
+# Keep old names for compatibility
+PIECE_TABLES = PIECE_TABLES_MG
+PIECE_TABLES_END = PIECE_TABLES_EG
 
 # File masks for pawn structure evaluation
 FILE_MASKS = [0x0101010101010101 << f for f in range(8)]
@@ -357,18 +406,24 @@ def _eval_pieces(board, color):
     if bishops and (bishops & (bishops - 1)):  # More than one bishop
         score += 30
 
-    # Rook on open/semi-open file
+    # Rook bonuses
     rooks = board.bitboards[3 + color * 6]
     own_pawns = board.bitboards[0 + color * 6]
     enemy_pawns = board.bitboards[0 + (1 - color) * 6]
+    seventh_rank = 6 if color == 0 else 1
     while rooks:
         sq = tools.bitscan_lsb(rooks)
         f = sq & 7
+        r = sq >> 3
+        # Rook on open/semi-open file
         if not (own_pawns & FILE_MASKS[f]):
             if not (enemy_pawns & FILE_MASKS[f]):
                 score += 25  # Open file
             else:
                 score += 15  # Semi-open file
+        # Rook on 7th rank
+        if r == seventh_rank:
+            score += 25
         rooks &= rooks - 1
 
     return score
@@ -411,22 +466,14 @@ def push_king(board):
 
 
 def evaluate_board(board):
-    evaluation = 0
-
-    # Compute game phase for tapered eval
+    # Compute game phase for tapered eval (0.0 = endgame, 1.0 = opening)
     phase = _compute_phase(board)
+    phase_int = int(phase * 256)
 
-    # Select piece-square tables based on phase
-    if phase > 0.5:
-        pst = PIECE_TABLES
-    else:
-        pst = PIECE_TABLES_END
+    # Tapered material + PST: interpolate between MG and EG scores
+    mg_score = 0
+    eg_score = 0
 
-    # Endgame king push
-    if phase < 0.15:
-        evaluation += push_king(board) * 15
-
-    # Material + PST
     for piece in range(12):
         piece_type = piece % 6
         color = piece // 6
@@ -436,29 +483,36 @@ def evaluate_board(board):
         while pieces:
             square = tools.bitscan_lsb(pieces)
             table_sq = (63 - square) if not color else square
-            evaluation += sign * (PIECE_VALUES[piece_type] + pst[piece_type][table_sq])
+            mat = sign * PIECE_VALUES[piece_type]
+            mg_score += mat + sign * PIECE_TABLES_MG[piece_type][table_sq]
+            eg_score += mat + sign * PIECE_TABLES_EG[piece_type][table_sq]
             pieces &= pieces - 1
 
-    # Positional bonuses (capped to prevent overriding material)
-    positional = 0
+    # Interpolate between middlegame and endgame
+    evaluation = (mg_score * phase_int + eg_score * (256 - phase_int)) // 256
+
+    # Endgame king push (mating with advantage)
+    if phase < 0.15:
+        evaluation += push_king(board) * 15
 
     # Pawn structure
-    positional += _eval_pawn_structure(board, 0)
-    positional -= _eval_pawn_structure(board, 1)
+    evaluation += _eval_pawn_structure(board, 0)
+    evaluation -= _eval_pawn_structure(board, 1)
 
-    # King safety
-    positional += _eval_king_safety(board, 0, phase)
-    positional -= _eval_king_safety(board, 1, phase)
+    # King safety (phase-scaled internally)
+    evaluation += _eval_king_safety(board, 0, phase)
+    evaluation -= _eval_king_safety(board, 1, phase)
 
-    # Piece bonuses (bishop pair, rook on open file)
-    positional += _eval_pieces(board, 0)
-    positional -= _eval_pieces(board, 1)
+    # Piece bonuses (bishop pair, rook on open file, rook on 7th)
+    evaluation += _eval_pieces(board, 0)
+    evaluation -= _eval_pieces(board, 1)
 
     # Piece mobility
-    positional += _eval_mobility(board, 0)
-    positional -= _eval_mobility(board, 1)
+    evaluation += _eval_mobility(board, 0)
+    evaluation -= _eval_mobility(board, 1)
 
-    evaluation += positional
+    # Tempo bonus: small advantage for having the move
+    evaluation += 12
 
     # Return relative to side to move
     return evaluation if board.color == 0 else -evaluation

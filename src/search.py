@@ -102,12 +102,14 @@ class Search:
         if depth == 0:
             return self.quiescence_search(board, alpha, beta, limit=4), None
 
+        # Static eval (used for NMP, futility pruning, razoring)
+        static_eval = self.eval_func(board) if not in_check else alpha
+
         # Null move pruning: skip our turn and search at reduced depth
         # Don't use NMP: in check, after a capture, or at shallow depth
         if (null_move_allowed and depth >= 3 and not in_check
-                and not capture_flag and ply > 0):
-            static_eval = self.eval_func(board)
-            if static_eval >= beta:
+                and not capture_flag and ply > 0
+                and static_eval >= beta):
                 R = 2 + (depth > 6)
                 # Flip color and update Zobrist key to match
                 board.color = 1 - board.color
@@ -132,33 +134,54 @@ class Search:
             reverse=True
         )
 
+        # Futility pruning: at shallow depth, skip quiet moves that can't raise alpha
+        futility_pruning = False
+        if depth <= 3 and not in_check and abs(alpha) < MATE_SCORE - 100:
+            futility_margin = [0, 200, 500, 900][depth]
+            if static_eval + futility_margin < alpha:
+                futility_pruning = True
+
         best_eval = float('-inf')
         best_move = None
         moves_searched = 0
 
         for move in ordered_moves:
             capture_flag = (move >> 17) & 0x1
+            promotion_flag = (move >> 16) & 0x1
+
+            # Futility pruning: skip quiet moves at shallow depths
+            if (futility_pruning and moves_searched > 0
+                    and not capture_flag and not promotion_flag):
+                continue
 
             undo = board.make_move(move)
             self.position_history.append(board.zobrist_key)
 
-            # Late move reductions: reduce depth for late quiet moves
-            reduction = 0
-            if (moves_searched >= 4 and depth >= 3
-                    and not capture_flag and not in_check):
-                reduction = int(math.log(moves_searched) * math.log(depth) / 2.0)
-                reduction = max(reduction, 1)
-                reduction = min(reduction, depth - 2)
-
-            eval_score, _ = self.negamax(board, depth - 1 - reduction,
-                                         ply + 1, -beta, -alpha, capture_flag)
-            eval_score = -eval_score
-
-            # Re-search at full depth if reduced search improved alpha
-            if reduction and eval_score > alpha:
-                eval_score, _ = self.negamax(board, depth - 1, ply + 1,
-                                             -beta, -alpha, capture_flag)
+            # PVS + LMR
+            if moves_searched == 0:
+                # First move: full window search
+                eval_score, _ = self.negamax(board, depth - 1,
+                                             ply + 1, -beta, -alpha, capture_flag)
                 eval_score = -eval_score
+            else:
+                # Late move reductions for quiet moves
+                reduction = 0
+                if (moves_searched >= 4 and depth >= 3
+                        and not capture_flag and not in_check):
+                    reduction = int(math.log(moves_searched) * math.log(depth) / 2.0)
+                    reduction = max(reduction, 1)
+                    reduction = min(reduction, depth - 2)
+
+                # Scout search with zero window (PVS)
+                eval_score, _ = self.negamax(board, depth - 1 - reduction,
+                                             ply + 1, -alpha - 1, -alpha, capture_flag)
+                eval_score = -eval_score
+
+                # Re-search with full window if scout found improvement
+                if eval_score > alpha and (reduction > 0 or eval_score < beta):
+                    eval_score, _ = self.negamax(board, depth - 1, ply + 1,
+                                                 -beta, -alpha, capture_flag)
+                    eval_score = -eval_score
 
             self.position_history.pop()
             board.unmake_move(undo)
@@ -217,7 +240,24 @@ class Search:
             key=lambda move: self.priority_moves(board, move),
             reverse=True)
 
+        DELTA_MARGIN = 200
+        piece_vals = [101, 316, 329, 494, 903, 0]
+
         for move in ordered_captures:
+            # Delta pruning: skip captures that can't possibly raise alpha
+            promotion_flag = (move >> 16) & 0x1
+            if not promotion_flag:
+                to_sq = (move >> 6) & 0x3F
+                color = (move >> 15) & 0x1
+                # Find captured piece value
+                captured_val = 0
+                for pt in range(5):
+                    if board.bitboards[pt + (1 - color) * 6] & (1 << to_sq):
+                        captured_val = piece_vals[pt]
+                        break
+                if stand_pat + captured_val + DELTA_MARGIN < alpha:
+                    continue
+
             undo = board.make_move(move)
             eval_score = -self.quiescence_search(board, -beta, -alpha,
                                                   None if limit is None else limit - 1)
