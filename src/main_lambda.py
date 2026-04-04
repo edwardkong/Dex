@@ -1,6 +1,6 @@
 from gamestate import GameState
 import tools
-import evaluate
+import eval
 
 import os
 import requests
@@ -28,7 +28,7 @@ def lambda_handler(event, context):
 
 class LambdaUCI:
     def __init__(self) -> None:
-        self.eval_func = evaluate.evaluate_board
+        self.eval_func = eval.evaluate_board
         self.depth = 4
 
     # UCI interface
@@ -76,7 +76,7 @@ class LambdaUCI:
         if game.move < 2:
             depth = 2
         else:
-            depth = evaluate.update_depth(game)
+            depth = eval.update_depth(game)
 
         eval, best_move = game.search()
 

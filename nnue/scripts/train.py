@@ -22,15 +22,23 @@ import math
 class DexNNUE(nn.Module):
     """NNUE-style evaluation network."""
 
-    def __init__(self, input_size=768, hidden1=256, hidden2=64):
+    def __init__(self, input_size=768, hidden1=256, hidden2=64, hidden3=0):
         super().__init__()
-        self.net = nn.Sequential(
+        layers = [
             nn.Linear(input_size, hidden1),
             nn.ReLU(),
             nn.Linear(hidden1, hidden2),
             nn.ReLU(),
-            nn.Linear(hidden2, 1),
-        )
+        ]
+        if hidden3 > 0:
+            layers.extend([
+                nn.Linear(hidden2, hidden3),
+                nn.ReLU(),
+                nn.Linear(hidden3, 1),
+            ])
+        else:
+            layers.append(nn.Linear(hidden2, 1))
+        self.net = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.net(x).squeeze(-1)
@@ -52,7 +60,7 @@ def wdl_to_cp(wdl: float, k: float = 400.0) -> float:
 def train_model(data_path: str, output_path: str, epochs: int = 50,
                 batch_size: int = 4096, lr: float = 0.001,
                 val_split: float = 0.1, hidden1: int = 256,
-                hidden2: int = 64):
+                hidden2: int = 64, hidden3: int = 0):
     """Train the NNUE model using WDL targets."""
     print(f"Loading data from {data_path}...")
     data = np.load(data_path)
@@ -90,9 +98,12 @@ def train_model(data_path: str, output_path: str, epochs: int = 50,
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     # Model
-    model = DexNNUE(hidden1=hidden1, hidden2=hidden2)
+    model = DexNNUE(hidden1=hidden1, hidden2=hidden2, hidden3=hidden3)
     param_count = sum(p.numel() for p in model.parameters())
-    print(f"  Model: 768 → {hidden1} → {hidden2} → 1 ({param_count:,} params)")
+    arch = f"768 → {hidden1} → {hidden2}"
+    if hidden3:
+        arch += f" → {hidden3}"
+    print(f"  Model: {arch} → 1 ({param_count:,} params)")
 
     # Loss: BCE since target is sigmoid(eval)
     criterion = nn.BCEWithLogitsLoss()
@@ -146,6 +157,7 @@ def train_model(data_path: str, output_path: str, epochs: int = 50,
                 'input_size': 768,
                 'hidden1': hidden1,
                 'hidden2': hidden2,
+                'hidden3': hidden3,
                 'val_loss': val_loss,
                 'val_mae_cp': val_mae_cp,
                 'epoch': epoch + 1,
@@ -165,7 +177,8 @@ def export_weights(model_path: str, output_path: str):
     checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
     model = DexNNUE(checkpoint['input_size'],
                     checkpoint['hidden1'],
-                    checkpoint['hidden2'])
+                    checkpoint['hidden2'],
+                    checkpoint.get('hidden3', 0))
     model.load_state_dict(checkpoint['model_state_dict'])
 
     weights = {}
@@ -188,6 +201,8 @@ def main():
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--hidden1", type=int, default=256)
     parser.add_argument("--hidden2", type=int, default=64)
+    parser.add_argument("--hidden3", type=int, default=0,
+                        help="Third hidden layer size (0 = no third layer)")
     parser.add_argument("--export", type=str,
                         help="Export weights from model file")
     args = parser.parse_args()
@@ -197,7 +212,8 @@ def main():
     else:
         model = train_model(args.data, args.output, args.epochs,
                            args.batch_size, args.lr,
-                           hidden1=args.hidden1, hidden2=args.hidden2)
+                           hidden1=args.hidden1, hidden2=args.hidden2,
+                           hidden3=args.hidden3)
         export_path = args.output.replace('.pt', '_weights.npz')
         export_weights(args.output, export_path)
 

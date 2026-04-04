@@ -2,7 +2,7 @@ from gamestate import GameState
 from board import Board
 from book import OpeningBook
 import tools
-import evaluate
+import eval
 import sys
 import time
 import precompute

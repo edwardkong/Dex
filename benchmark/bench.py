@@ -21,7 +21,7 @@ from gamestate import GameState
 from search import Search
 from transpositiontable import TranspositionTable
 import tools
-import evaluate
+import eval
 
 # Fixed benchmark positions as move sequences from startpos.
 # Mix of opening, middlegame, and endgame-like states.

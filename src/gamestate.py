@@ -2,7 +2,7 @@ from board import Board
 from search import Search
 from zobristhash import ZobristHash
 from transpositiontable import TranspositionTable
-import evaluate
+import eval
 import tools
 
 import sys
@@ -19,7 +19,7 @@ class GameState:
             self.board = board
         self.tt = TranspositionTable()
         self.phase = 0
-        self.eval_func = evaluate.evaluate_board
+        self.eval_func = eval.evaluate_board
         self.position_history = []
         self.halfmove_clock = 0
 

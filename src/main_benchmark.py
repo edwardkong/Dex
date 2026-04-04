@@ -1,6 +1,6 @@
 from gamestate import GameState
 import tools
-import evaluate
+import eval
 import precompute
 
 import cProfile
@@ -88,7 +88,7 @@ pre_iter = iter(pre_commands)
 class UCI:
     #@profile
     def coms(self):
-        eval_func = evaluate.evaluate_board
+        eval_func = eval.evaluate_board
         depth = 4
         new_game = GameState()
         new_game.newGameUCI()

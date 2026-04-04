@@ -2,8 +2,8 @@ import math
 
 from movegenerator import MoveGenerator
 from zobristhash import ZobristHash
-import evaluate
-from evaluate import is_insufficient_material
+import eval
+from eval import is_insufficient_material
 from transpositiontable import TTEntry, EXACT, LOWERBOUND, UPPERBOUND
 
 MATE_SCORE = 100000
@@ -16,7 +16,7 @@ class Search:
                  position_history=None, halfmove_clock=0):
         self.nodes = 0
         if eval_func is None:
-            self.eval_func = evaluate.evaluate_board
+            self.eval_func = eval.evaluate_board
         else:
             self.eval_func = eval_func
         self.tt = tt

@@ -19,12 +19,12 @@ class NNUEEvaluator:
 
     def __init__(self, weights_path: str):
         data = np.load(weights_path)
-        self.w1 = data['net.0.weight']  # (hidden1, 768)
-        self.b1 = data['net.0.bias']    # (hidden1,)
-        self.w2 = data['net.2.weight']  # (hidden2, hidden1)
-        self.b2 = data['net.2.bias']    # (hidden2,)
-        self.w3 = data['net.4.weight']  # (1, hidden2)
-        self.b3 = data['net.4.bias']    # (1,)
+        # Load layers dynamically (supports 2 or 3 hidden layers)
+        self.layers = []
+        i = 0
+        while f'net.{i}.weight' in data:
+            self.layers.append((data[f'net.{i}.weight'], data[f'net.{i}.bias']))
+            i += 2  # Skip ReLU layers (no weights)
         self.use_wdl = bool(data.get('use_wdl', [0])[0])
         if not self.use_wdl:
             self.eval_scale = float(data['eval_scale'][0])
@@ -58,17 +58,13 @@ class NNUEEvaluator:
 
     def _forward(self, features: np.ndarray) -> float:
         """Run the neural network forward pass."""
-        # Layer 1: linear + ReLU
-        h1 = features @ self.w1.T + self.b1
-        h1 = np.maximum(h1, 0)  # ReLU
-
-        # Layer 2: linear + ReLU
-        h2 = h1 @ self.w2.T + self.b2
-        h2 = np.maximum(h2, 0)  # ReLU
-
-        # Output layer
-        out = h2 @ self.w3.T + self.b3
-        return float(out[0])
+        x = features
+        for i, (w, b) in enumerate(self.layers):
+            x = x @ w.T + b
+            # ReLU on all layers except the last
+            if i < len(self.layers) - 1:
+                x = np.maximum(x, 0)
+        return float(x[0])
 
     def evaluate(self, board) -> int:
         """Evaluate a position. Returns centipawns, side-to-move relative."""
@@ -99,7 +95,8 @@ def load_nnue(weights_path: str = None):
     if weights_path is None:
         # Default path relative to src/
         weights_path = os.path.join(os.path.dirname(__file__),
-                                     '..', 'nnue', 'models',
+                                     '..', '..', '..',
+                                     'nnue', 'models',
                                      'dex_nnue_weights.npz')
     _evaluator = NNUEEvaluator(weights_path)
     return _evaluator
