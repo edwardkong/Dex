@@ -472,8 +472,13 @@ def _eval_mobility(board, color):
             temp &= temp - 1
         avg = _AVG_MOBILITY[piece_type_idx] * count
         diff = squares - avg
-        # 2% of piece value per square above/below average
-        score += diff * PIECE_VALUES[piece_type_idx] // 50
+        # Scale mobility bonus by piece type:
+        # Knights/bishops: 3% of value (~10cp/sq) — development matters most
+        # Rooks: 2% of value (~10cp/sq)
+        # Queens: 0.5% of value (~4.5cp/sq) — queens are naturally mobile,
+        #   don't over-reward; let minor piece underdevelopment dominate
+        divisor = {1: 33, 2: 33, 3: 50, 4: 200}[piece_type_idx]
+        score += diff * PIECE_VALUES[piece_type_idx] // divisor
     return score
 
 
