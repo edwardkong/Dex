@@ -395,6 +395,55 @@ def _eval_mobility(board, color):
     return score
 
 
+# Starting squares for development evaluation
+# White: knights b1(1), g1(6); bishops c1(2), f1(5); queen d1(3)
+# Black: knights b8(57), g8(62); bishops c8(58), f8(61); queen d8(59)
+_MINOR_START_SQ = {
+    0: (1, 6, 2, 5),    # White: N(b1), N(g1), B(c1), B(f1)
+    1: (57, 62, 58, 61), # Black: N(b8), N(g8), B(c8), B(f8)
+}
+_QUEEN_START_SQ = {0: 3, 1: 59}  # d1, d8
+
+_DEV_BONUS_PER_MINOR = 8
+_QUEEN_EARLY_PENALTY_LT2 = -30  # Queen out with < 2 minors developed
+_QUEEN_EARLY_PENALTY_LT3 = -15  # Queen out with < 3 minors developed
+
+
+def _eval_development(board, color, phase):
+    """Penalize early queen movement and reward minor piece development.
+
+    Only active when phase > 0.5 (opening / early middlegame).
+    """
+    if phase < 0.5:
+        return 0
+
+    # Bitboards for this color's minor pieces and queen
+    knights = board.bitboards[1 + color * 6]
+    bishops = board.bitboards[2 + color * 6]
+    queen = board.bitboards[4 + color * 6]
+
+    # Count how many of the 4 minor pieces have LEFT their starting square
+    developed = 0
+    for sq in _MINOR_START_SQ[color][:2]:  # Knights
+        if not (knights & (1 << sq)):
+            developed += 1
+    for sq in _MINOR_START_SQ[color][2:]:  # Bishops
+        if not (bishops & (1 << sq)):
+            developed += 1
+
+    score = developed * _DEV_BONUS_PER_MINOR
+
+    # Queen early penalty: queen not on starting square with few minors out
+    queen_home = queen & (1 << _QUEEN_START_SQ[color])
+    if queen and not queen_home:
+        if developed < 2:
+            score += _QUEEN_EARLY_PENALTY_LT2
+        elif developed < 3:
+            score += _QUEEN_EARLY_PENALTY_LT3
+
+    return score
+
+
 def _eval_pieces(board, color):
     """Evaluate piece-specific bonuses: bishop pair, rook on open file."""
     score = 0
@@ -510,6 +559,10 @@ def evaluate_board(board):
     # Piece mobility
     evaluation += _eval_mobility(board, 0)
     evaluation -= _eval_mobility(board, 1)
+
+    # Development incentives (opening only, phase-gated internally)
+    evaluation += _eval_development(board, 0, phase)
+    evaluation -= _eval_development(board, 1, phase)
 
     # Tempo bonus: small advantage for having the move
     evaluation += 12
