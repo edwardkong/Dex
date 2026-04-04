@@ -15,3 +15,5 @@ UI/
 benchmark/*/
 !benchmark/results/
 benchmark/benchmark_pivot.csv
+nnue/data/
+nnue/models/
