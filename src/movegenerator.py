@@ -442,8 +442,10 @@ class MoveGenerator:
     def generate_knight_captures(self, from_square):
         candidate = []
         knight_scope = scope.generate_knight_scope(from_square)
+        enemy_king = self.board.bitboards[5 + (1 - self.color) * 6]
         for square in knight_scope:
-            if self.board.occupants[1 - self.color] & (1 << square):
+            if (self.board.occupants[1 - self.color] & (1 << square)
+                    and not enemy_king & (1 << square)):
                 candidate.append(square)
 
         return candidate
@@ -455,9 +457,11 @@ class MoveGenerator:
         # Get the squares that the knight can potentially move to
         knight_scope = scope.generate_knight_scope(from_square)
 
-        # Knight can not move to a friendly occupied square
+        # Knight can not move to a friendly occupied square or capture king
+        enemy_king = self.board.bitboards[5 + (1 - self.color) * 6]
         for square in knight_scope:
-            if not self.board.occupants[self.color] & (1 << square):
+            if (not self.board.occupants[self.color] & (1 << square)
+                    and not enemy_king & (1 << square)):
                 candidate.append(square)
 
         return candidate
@@ -500,7 +504,9 @@ class MoveGenerator:
 
             move_mask |= a_diag_moves
 
-        move_mask &= ~(self.board.occupants[self.color])
+        # Exclude friendly pieces and enemy king (can never capture king)
+        enemy_king = self.board.bitboards[5 + (1 - self.color) * 6]
+        move_mask &= ~(self.board.occupants[self.color]) & ~enemy_king
         while move_mask:
             to_square = tools.bitscan_lsb(move_mask)
             candidate.append(to_square)
@@ -553,10 +559,12 @@ class MoveGenerator:
                 if self.board.occupants[self.color] & (1 << new_square):
                     break
                 if self.board.occupants[1 - self.color] & (1 << new_square):
-                    candidate.append(new_square)
+                    # Never capture the king
+                    if not self.board.bitboards[5 + (1 - self.color) * 6] & (1 << new_square):
+                        candidate.append(new_square)
                     break
 
-                new_rank += d[0] 
+                new_rank += d[0]
                 new_file += d[1]
 
         return candidate
