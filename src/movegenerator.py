@@ -161,13 +161,14 @@ class MoveGenerator:
             candidate.extend(self.generate_sliding_captures(from_square, 
                                                          piece_type))
             
-        for to_square in candidate:
+        for entry in candidate:
             promotion_flag = 0
             move_piece = piece_type
-            if type(to_square) == str:
-                move_piece = tools.char_to_int_piece(to_square[-1])
-                to_square = int(to_square[:-1])
+            if type(entry) is tuple:
+                to_square, move_piece = entry
                 promotion_flag = 1
+            else:
+                to_square = entry
 
             # Piece is pinned and destination is outside of the pin or
             # King is in check and piece destination is not blocking
@@ -204,14 +205,15 @@ class MoveGenerator:
             candidate.extend(self.generate_sliding_moves(from_square,
                                                          piece_type))
 
-        for to_square in candidate:
+        for entry in candidate:
             promotion_flag = 0
             capture_flag = 0
             move_piece = piece_type
-            if type(to_square) == str:
-                move_piece = tools.char_to_int_piece(to_square[-1])
-                to_square = int(to_square[:-1])
+            if type(entry) is tuple:
+                to_square, move_piece = entry
                 promotion_flag = 1
+            else:
+                to_square = entry
             if self.board.occupants[1 - color] & (1 << to_square):
                 capture_flag = 1
             # En passant: diagonal pawn move to empty square
@@ -370,9 +372,10 @@ class MoveGenerator:
         if (1 <= rank < 7 and 
             not (self.board.occupants[2] & (1 << single_square))):
 
-            # Single step promotion
+            # Single step promotion: (to_square, promotion_piece_type)
             if (color == 0 and rank == 6) or (color == 1 and rank == 1):
-                candidate.extend([f"{single_square}{p}" for p in "nbrq"])
+                candidate.extend([(single_square, 1), (single_square, 2),
+                                  (single_square, 3), (single_square, 4)])
 
             else:
                 candidate.append(single_square)
@@ -400,7 +403,8 @@ class MoveGenerator:
                 # Capture can lead to promotion
                 if ((self.color == 0 and rank == 6) or 
                     (self.color == 1 and rank == 1)):
-                    candidate.extend([f"{square}{p}" for p in "nbrq"])
+                    candidate.extend([(square, 1), (square, 2),
+                                      (square, 3), (square, 4)])
 
                 else:
                     candidate.append(square)
