@@ -1,6 +1,7 @@
 from gamestate import GameState
 from board import Board
 from book import OpeningBook
+from tablebase import probe_tablebase
 import tools
 import eval
 import sys
@@ -38,8 +39,10 @@ class UCI:
             elif parsed_command[0] == "position":
                 new_game = GameState()
                 new_game.newGameUCI()
+                from_startpos = False
 
                 if parsed_command[1] == "startpos":
+                    from_startpos = True
                     if len(parsed_command) > 3 and parsed_command[2] == "moves":
                         for move_str in parsed_command[3:]:
                             given_move = tools.uci_to_int(
@@ -98,18 +101,30 @@ class UCI:
                         increment = params.get("binc", 0)
                     time_limit = (remaining / 20.0 + increment * 0.75) / 1000.0
 
-                # Try opening book first
-                book_move = opening_book.probe(new_game.move_history)
-                if book_move and "infinite" not in params:
-                    print(f"info string book move {book_move}")
-                    print(f"bestmove {book_move}")
-                    sys.stdout.flush()
-                else:
-                    eval_score, best_move = new_game.search(time_limit=time_limit)
-
-                    if "infinite" not in params:
-                        print(f"bestmove {tools.int_to_uci(best_move)}")
+                if "infinite" not in params:
+                    # Try endgame tablebase first (perfect play)
+                    tb_result = probe_tablebase(new_game.board)
+                    if tb_result:
+                        tb_move, tb_eval = tb_result
+                        print(f"info string tablebase move {tb_move} eval {tb_eval}")
+                        print(f"bestmove {tb_move}")
                         sys.stdout.flush()
+                        continue
+
+                    # Try opening book (only from startpos)
+                    book_move = opening_book.probe(new_game.move_history) if from_startpos else None
+                    if book_move:
+                        print(f"info string book move {book_move}")
+                        print(f"bestmove {book_move}")
+                        sys.stdout.flush()
+                        continue
+
+                # Engine search
+                eval_score, best_move = new_game.search(time_limit=time_limit)
+
+                if "infinite" not in params:
+                    print(f"bestmove {tools.int_to_uci(best_move)}")
+                    sys.stdout.flush()
 
             elif parsed_command[0] == "stop":
                 if best_move is not None:
