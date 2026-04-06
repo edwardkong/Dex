@@ -1,14 +1,42 @@
 import tools, scope
 import precompute
 
-# This module requires optimizations, such as utilizing generators
-# to provide moves iteratively. Bit manipulations may potentially
-# be optimized further.
-
 DIRECTIONS = [
         (1, 1), (1, -1), (-1, 1), (-1, -1),
         (1, 0), (-1, 0), (0, 1), (0, -1)
         ]
+
+# Precomputed scope tables — avoids creating lists on every call
+_KNIGHT_SCOPE = [None] * 64
+_KING_SCOPE = [None] * 64
+_PAWN_SCOPE = [[None] * 64, [None] * 64]  # [color][square]
+
+for _sq in range(64):
+    _r, _f = divmod(_sq, 8)
+    # Knight
+    _moves = []
+    for _dr, _df in ((2,1),(1,2),(-2,1),(-1,2),(2,-1),(1,-2),(-2,-1),(-1,-2)):
+        _nr, _nf = _r + _dr, _f + _df
+        if 0 <= _nr < 8 and 0 <= _nf < 8:
+            _moves.append(8 * _nr + _nf)
+    _KNIGHT_SCOPE[_sq] = tuple(_moves)
+    # King
+    _moves = []
+    for _dr, _df in ((1,1),(1,0),(1,-1),(0,1),(0,-1),(-1,1),(-1,0),(-1,-1)):
+        _nr, _nf = _r + _dr, _f + _df
+        if 0 <= _nr < 8 and 0 <= _nf < 8:
+            _moves.append(8 * _nr + _nf)
+    _KING_SCOPE[_sq] = tuple(_moves)
+    # Pawn scopes (capture squares only)
+    for _c in (0, 1):
+        _moves = []
+        _dirs = [(-7, -9)] if _c else [(9, 7)]
+        for _d in _dirs[0]:
+            _tsq = _sq + _d
+            _tf = _tsq % 8
+            if 0 <= _tsq < 64 and abs(_tf - _f) == 1:
+                _moves.append(_tsq)
+        _PAWN_SCOPE[_c][_sq] = tuple(_moves)
 
 class MoveGenerator:
     def __init__(self, board):
@@ -292,7 +320,7 @@ class MoveGenerator:
         while knights:
             knight_square = tools.bitscan_lsb(knights)
 
-            for move in scope.generate_knight_scope(knight_square):
+            for move in _KNIGHT_SCOPE[knight_square]:
                 self.attacked_jump_mask |= (1 << move)
 
                 if king_square  == move:
@@ -314,7 +342,7 @@ class MoveGenerator:
                 pawns &= pawns - 1
                 continue
 
-            for move in scope.generate_pawn_scope(pawn_square, (1 - color)):
+            for move in _PAWN_SCOPE[1 - color][pawn_square]:
                 self.attacked_jump_mask |= (1 << move)
 
                 if king_square == move:
@@ -328,7 +356,7 @@ class MoveGenerator:
         opp_king = bitboards[5 + (1 - color) * 6]
         opp_king_square = tools.bitscan_lsb(opp_king)
 
-        for move in scope.generate_king_scope(opp_king_square):
+        for move in _KING_SCOPE[opp_king_square]:
             self.attacked_jump_mask |= (1 << move)
 
     def generate_pawn_push(self, from_square):
@@ -364,7 +392,7 @@ class MoveGenerator:
         rank = from_square // 8
 
         # Get the squares that the pawn can potentially capture to
-        pawn_scope = scope.generate_pawn_scope(from_square, self.color)
+        pawn_scope = _PAWN_SCOPE[self.color][from_square]
 
         # Check each square to see if it contains an opponent's piece
         for square in pawn_scope:
@@ -441,7 +469,7 @@ class MoveGenerator:
 
     def generate_knight_captures(self, from_square):
         candidate = []
-        knight_scope = scope.generate_knight_scope(from_square)
+        knight_scope = _KNIGHT_SCOPE[from_square]
         enemy_king = self.board.bitboards[5 + (1 - self.color) * 6]
         for square in knight_scope:
             if (self.board.occupants[1 - self.color] & (1 << square)
@@ -455,7 +483,7 @@ class MoveGenerator:
         candidate = []
 
         # Get the squares that the knight can potentially move to
-        knight_scope = scope.generate_knight_scope(from_square)
+        knight_scope = _KNIGHT_SCOPE[from_square]
 
         # Knight can not move to a friendly occupied square or capture king
         enemy_king = self.board.bitboards[5 + (1 - self.color) * 6]
@@ -601,21 +629,29 @@ class MoveGenerator:
         return candidate
     
     def generate_attacked_ray_mask(self):
-        """Returns a mask of all squares attacked by sliding pieces."""
+        """Build a bitmask of all squares attacked by enemy sliding pieces."""
         color = self.color
-        
+        occupants = self.board.occupants[2]
+
         for piece_type in (2, 3, 4):
             pieces = self.board.bitboards[piece_type + (1 - color) * 6]
+            start = 0 if piece_type in (2, 4) else 4
+            end = 8 if piece_type in (3, 4) else 4
 
             while pieces:
-                # Find the index of the least significant set bit (LSB)
                 from_square = tools.bitscan_lsb(pieces)
-                for attacked_square in \
-                self.generate_sliding_scope(from_square, 
-                                            1 - color, piece_type):
-                    self.attacked_ray_mask |= (1 << attacked_square)
+                rank, file = from_square >> 3, from_square & 7
 
-                # Clear the LSB to move to the next piece
+                for d in DIRECTIONS[start:end]:
+                    r, f = rank + d[0], file + d[1]
+                    while 0 <= r < 8 and 0 <= f < 8:
+                        sq = (r << 3) | f
+                        self.attacked_ray_mask |= (1 << sq)
+                        if occupants & (1 << sq):
+                            break
+                        r += d[0]
+                        f += d[1]
+
                 pieces &= pieces - 1
     
     def is_moving_along_pin(self, from_square, to_square):
