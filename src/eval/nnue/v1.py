@@ -17,7 +17,12 @@ import tools
 class NNUEEvaluator:
     """Neural network evaluation with incremental first-layer updates."""
 
-    def __init__(self, weights_path: str):
+    def __init__(self, weights_path: str = None):
+        if weights_path is None:
+            weights_path = os.path.join(os.path.dirname(__file__),
+                                         '..', '..', '..',
+                                         'nnue', 'models',
+                                         'dex_nnue_weights.npz')
         data = np.load(weights_path)
 
         # First layer weights: shape (H1, 768) — one column per input feature

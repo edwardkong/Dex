@@ -15,6 +15,8 @@ class UCI:
         new_game.newGameUCI()
         best_move = None
         opening_book = OpeningBook()
+        nnue_evaluator = None  # Loaded on demand
+        use_nnue = False
 
         while True:
             try:
@@ -26,19 +28,46 @@ class UCI:
             if parsed_command[0] == "uci":
                 print("id name Dex 0.3")
                 print("id author Edward Kong")
+                print("option name EvalType type combo default heuristic var heuristic var nnue")
                 print("uciok")
 
             elif parsed_command[0] == "isready":
                 print("readyok")
 
+            elif parsed_command[0] == "setoption":
+                # Parse: setoption name EvalType value nnue
+                if "name" in parsed_command and "value" in parsed_command:
+                    name_idx = parsed_command.index("name") + 1
+                    value_idx = parsed_command.index("value") + 1
+                    if name_idx < len(parsed_command) and value_idx < len(parsed_command):
+                        opt_name = parsed_command[name_idx]
+                        opt_value = parsed_command[value_idx]
+                        if opt_name == "EvalType":
+                            if opt_value == "nnue":
+                                if nnue_evaluator is None:
+                                    from eval.nnue.v1 import NNUEEvaluator
+                                    nnue_evaluator = NNUEEvaluator(None)  # Default path
+                                    print("info string NNUE loaded", file=sys.stderr)
+                                use_nnue = True
+                                new_game.nnue_evaluator = nnue_evaluator
+                                print("info string Eval: NNUE")
+                            else:
+                                use_nnue = False
+                                new_game.nnue_evaluator = None
+                                print("info string Eval: heuristic")
+
             elif parsed_command[0] == "ucinewgame":
                 new_game = GameState()
                 new_game.newGameUCI()
                 new_game.tt.clear()
+                if use_nnue:
+                    new_game.nnue_evaluator = nnue_evaluator
 
             elif parsed_command[0] == "position":
                 new_game = GameState()
                 new_game.newGameUCI()
+                if use_nnue:
+                    new_game.nnue_evaluator = nnue_evaluator
                 from_startpos = False
 
                 if parsed_command[1] == "startpos":
@@ -50,7 +79,6 @@ class UCI:
                             new_game.make_move(given_move)
 
                 elif parsed_command[1] == "fen":
-                    # Find where moves start (if any)
                     fen_parts = []
                     moves_idx = None
                     for i in range(2, len(parsed_command)):
@@ -62,6 +90,8 @@ class UCI:
                     fen_string = " ".join(fen_parts)
                     new_game = GameState(board=Board.from_fen(fen_string))
                     new_game.newGameUCI()
+                    if use_nnue:
+                        new_game.nnue_evaluator = nnue_evaluator
 
                     if moves_idx is not None:
                         for move_str in parsed_command[moves_idx + 1:]:

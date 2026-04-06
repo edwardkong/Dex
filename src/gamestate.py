@@ -20,6 +20,7 @@ class GameState:
         self.tt = TranspositionTable()
         self.phase = 0
         self.eval_func = eval.evaluate_board
+        self.nnue_evaluator = None  # Set externally to enable NNUE
         self.position_history = []
         self.halfmove_clock = 0
 
@@ -42,7 +43,8 @@ class GameState:
         max_depth = MAX_DEPTH if time_limit else 6
         searcher = Search(self.tt, max_depth,
                           position_history=self.position_history,
-                          halfmove_clock=self.halfmove_clock)
+                          halfmove_clock=self.halfmove_clock,
+                          nnue_evaluator=self.nnue_evaluator)
 
         eval_score = 0
         move = None
@@ -50,7 +52,7 @@ class GameState:
         for d in range(1, max_depth + 1):
             searcher.max_depth = d
             searcher.nodes = 0
-            searcher.iterative_deepening(self.board)
+            searcher.start_search(self.board)
             eval_score, move = searcher.best_moves[d]
 
             elapsed = time.time() - start_time
