@@ -1,4 +1,5 @@
 import math
+import os
 
 from movegenerator import MoveGenerator
 from zobristhash import ZobristHash
@@ -6,9 +7,72 @@ import eval
 from eval import is_insufficient_material
 from transpositiontable import TTEntry, EXACT, LOWERBOUND, UPPERBOUND
 
+# Local Syzygy tablebase for search evaluation
+_syzygy_tb = None
+try:
+    import chess.syzygy
+    _tb_path = os.path.join(os.path.dirname(__file__), '..', 'syzygy')
+    if os.path.isdir(_tb_path):
+        _syzygy_tb = chess.syzygy.open_tablebase(_tb_path, load_dtz=False)
+except ImportError:
+    pass
+
 MATE_SCORE = 100000
 MAX_PLY = 64
 ASPIRATION_WINDOW = 50
+TB_WIN_SCORE = 9000  # Tablebase win, below mate but above any heuristic eval
+
+
+def _probe_syzygy_wdl(board) -> int | None:
+    """Probe local Syzygy WDL tables. Returns score or None.
+
+    Only probes positions with 6 or fewer pieces.
+    Returns side-to-move relative score:
+      +TB_WIN_SCORE for win, 0 for draw, -TB_WIN_SCORE for loss.
+    """
+    if _syzygy_tb is None:
+        return None
+
+    # Count pieces
+    count = 0
+    occ = board.occupants[2]
+    while occ:
+        count += 1
+        occ &= occ - 1
+    if count > 6:
+        return None
+
+    # Convert to python-chess board for probing
+    try:
+        import chess
+        b = chess.Board()
+        b.clear()
+        piece_map = {
+            0: (chess.PAWN, chess.WHITE), 1: (chess.KNIGHT, chess.WHITE),
+            2: (chess.BISHOP, chess.WHITE), 3: (chess.ROOK, chess.WHITE),
+            4: (chess.QUEEN, chess.WHITE), 5: (chess.KING, chess.WHITE),
+            6: (chess.PAWN, chess.BLACK), 7: (chess.KNIGHT, chess.BLACK),
+            8: (chess.BISHOP, chess.BLACK), 9: (chess.ROOK, chess.BLACK),
+            10: (chess.QUEEN, chess.BLACK), 11: (chess.KING, chess.BLACK),
+        }
+        for idx in range(12):
+            bb = board.bitboards[idx]
+            pt, color = piece_map[idx]
+            while bb:
+                sq = (bb & -bb).bit_length() - 1
+                b.set_piece_at(sq, chess.Piece(pt, color))
+                bb &= bb - 1
+        b.turn = chess.WHITE if board.color == 0 else chess.BLACK
+
+        wdl = _syzygy_tb.probe_wdl(b)
+        if wdl > 0:
+            return TB_WIN_SCORE
+        elif wdl < 0:
+            return -TB_WIN_SCORE
+        else:
+            return 0
+    except Exception:
+        return None
 
 
 class Search:
@@ -100,7 +164,17 @@ class Search:
 
         # Leaf node
         if depth == 0:
+            # Probe local tablebase at leaf for positions with ≤6 pieces
+            tb_score = _probe_syzygy_wdl(board)
+            if tb_score is not None:
+                return tb_score, None
             return self.quiescence_search(board, alpha, beta, limit=4), None
+
+        # Probe tablebase at interior nodes too (enables finding winning trades)
+        if ply > 0:
+            tb_score = _probe_syzygy_wdl(board)
+            if tb_score is not None:
+                return tb_score, None
 
         # Static eval (used for NMP, futility pruning, razoring)
         static_eval = self.eval_func(board) if not in_check else alpha
