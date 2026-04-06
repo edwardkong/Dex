@@ -77,7 +77,8 @@ def _probe_syzygy_wdl(board) -> int | None:
 
 class Search:
     def __init__(self, tt, depth=None, eval_func=None,
-                 position_history=None, halfmove_clock=0):
+                 position_history=None, halfmove_clock=0,
+                 nnue_evaluator=None):
         self.nodes = 0
         if eval_func is None:
             self.eval_func = eval.evaluate_board
@@ -90,8 +91,68 @@ class Search:
         self.history = [[[0] * 64 for _ in range(64)] for _ in range(2)]
         self.position_history = list(position_history) if position_history else []
         self.halfmove_clock = halfmove_clock
+        self.nnue = nnue_evaluator
+        self.accum_stack = []  # Stack of accumulators for make/unmake
+
+    def _eval(self, board) -> int:
+        """Evaluate using NNUE accumulator if available, else heuristic."""
+        if self.nnue and self.accum_stack:
+            return self.nnue.evaluate_from_accumulator(
+                self.accum_stack[-1], board.color)
+        return self.eval_func(board)
+
+    def _make_move_with_accum(self, board, move):
+        """Make a move and update the NNUE accumulator incrementally."""
+        # Extract move info before make_move changes the board
+        from_sq = move & 0x3F
+        to_sq = (move >> 6) & 0x3F
+        piece_type = (move >> 12) & 0x7
+        color = (move >> 15) & 0x1
+        promotion_flag = (move >> 16) & 0x1
+        piece_type_color = piece_type + color * 6
+
+        # Detect captured piece before the board changes
+        captured_piece = -1
+        if board.occupants[1 - color] & (1 << to_sq):
+            for pt in range(6):
+                if board.bitboards[pt + (1 - color) * 6] & (1 << to_sq):
+                    captured_piece = pt + (1 - color) * 6
+                    break
+        # En passant capture
+        elif (piece_type == 0 and board.en_passant_flag != -1
+              and (to_sq & 7) == board.en_passant_flag
+              and abs(from_sq - to_sq) in (7, 9)):
+            captured_piece = 0 + (1 - color) * 6
+
+        # Make the actual move
+        undo = board.make_move(move)
+
+        # Update accumulator if NNUE is active
+        if self.nnue and self.accum_stack:
+            prev_accum = self.accum_stack[-1]
+            promotion_piece = -1
+            if promotion_flag:
+                promotion_piece = piece_type + color * 6  # piece_type has promo piece
+                piece_type_color = 0 + color * 6  # was a pawn
+
+            new_accum = self.nnue.update_accumulator(
+                prev_accum, piece_type_color, from_sq, to_sq,
+                captured_piece=captured_piece,
+                promotion_piece=promotion_piece)
+            self.accum_stack.append(new_accum)
+
+        return undo
+
+    def _unmake_move_with_accum(self, board, undo):
+        """Unmake a move and restore the previous accumulator."""
+        board.unmake_move(undo)
+        if self.nnue and len(self.accum_stack) > 1:
+            self.accum_stack.pop()
 
     def start_search(self, board):
+        # Compute initial accumulator if NNUE is active
+        if self.nnue:
+            self.accum_stack = [self.nnue.compute_accumulator(board)]
         self.iterative_deepening(board)
         return self.best_moves[self.max_depth]
 
@@ -177,7 +238,7 @@ class Search:
                 return tb_score, None
 
         # Static eval (used for NMP, futility pruning, razoring)
-        static_eval = self.eval_func(board) if not in_check else alpha
+        static_eval = self._eval(board) if not in_check else alpha
 
         # Null move pruning: skip our turn and search at reduced depth
         # Don't use NMP: in check, after a capture, or at shallow depth
@@ -228,7 +289,7 @@ class Search:
                     and not capture_flag and not promotion_flag):
                 continue
 
-            undo = board.make_move(move)
+            undo = self._make_move_with_accum(board, move)
             self.position_history.append(board.zobrist_key)
 
             # PVS + LMR
@@ -258,7 +319,7 @@ class Search:
                     eval_score = -eval_score
 
             self.position_history.pop()
-            board.unmake_move(undo)
+            self._unmake_move_with_accum(board, undo)
             moves_searched += 1
 
             if eval_score > best_eval:
@@ -290,7 +351,7 @@ class Search:
 
     def quiescence_search(self, board, alpha, beta, limit=None):
         self.nodes += 1
-        stand_pat = self.eval_func(board)
+        stand_pat = self._eval(board)
 
         if stand_pat >= beta:
             return beta
@@ -332,10 +393,10 @@ class Search:
                 if stand_pat + captured_val + DELTA_MARGIN < alpha:
                     continue
 
-            undo = board.make_move(move)
+            undo = self._make_move_with_accum(board, move)
             eval_score = -self.quiescence_search(board, -beta, -alpha,
                                                   None if limit is None else limit - 1)
-            board.unmake_move(undo)
+            self._unmake_move_with_accum(board, undo)
 
             if eval_score >= beta:
                 return beta
