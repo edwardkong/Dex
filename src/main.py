@@ -15,7 +15,8 @@ class UCI:
         new_game.newGameUCI()
         best_move = None
         opening_book = OpeningBook()
-        nnue_evaluator = None  # Loaded on demand
+        # Default to heuristic eval (NNUE available via setoption)
+        nnue_evaluator = None
         use_nnue = False
 
         while True:
