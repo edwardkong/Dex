@@ -279,8 +279,9 @@ class Search:
 
         best_eval = float('-inf')
         best_move = None
-        second_eval = float('-inf')
-        second_move = None
+        if ply == 0:
+            second_eval = float('-inf')
+            second_move = None
         moves_searched = 0
 
         for move in ordered_moves:
