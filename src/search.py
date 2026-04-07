@@ -153,6 +153,7 @@ class Search:
         # Compute initial accumulator if NNUE is active
         if self.nnue:
             self.accum_stack = [self.nnue.compute_accumulator(board)]
+        self.second_best = {}  # {depth: (eval, move)} for repetition avoidance
         self.iterative_deepening(board)
         return self.best_moves[self.max_depth]
 
@@ -278,6 +279,8 @@ class Search:
 
         best_eval = float('-inf')
         best_move = None
+        second_eval = float('-inf')
+        second_move = None
         moves_searched = 0
 
         for move in ordered_moves:
@@ -323,8 +326,14 @@ class Search:
             moves_searched += 1
 
             if eval_score > best_eval:
+                if ply == 0:
+                    second_eval = best_eval
+                    second_move = best_move
                 best_eval = eval_score
                 best_move = move
+            elif ply == 0 and eval_score > second_eval:
+                second_eval = eval_score
+                second_move = move
 
             alpha = max(alpha, eval_score)
             if alpha >= beta:
@@ -346,6 +355,10 @@ class Search:
         entry = TTEntry(board.zobrist_key, depth, best_eval, board.commits,
                         bound, best_move)
         self.tt.store_eval(entry)
+
+        # Track second-best at root for repetition avoidance
+        if ply == 0 and second_move is not None:
+            self.second_best[depth] = (second_eval, second_move)
 
         return best_eval, best_move
 

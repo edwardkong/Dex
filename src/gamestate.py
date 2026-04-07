@@ -81,7 +81,7 @@ class GameState:
                 if d >= 6:
                     break
 
-        return eval_score, move
+        return eval_score, move, searcher
 
     def make_move(self, move):
         commital = self.board.is_commital_move(move)

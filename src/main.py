@@ -169,10 +169,29 @@ class UCI:
                         continue
 
                 # Engine search
-                eval_score, best_move = new_game.search(time_limit=time_limit)
+                eval_score, best_move, searcher = new_game.search(time_limit=time_limit)
 
-                if "infinite" not in params:
-                    print(f"bestmove {tools.int_to_uci(best_move)}")
+                # Repetition avoidance: if best move would cause 3-fold
+                # and we're winning, play second-best instead (if it's acceptable)
+                if best_move and "infinite" not in params:
+                    final_move = best_move
+                    undo = new_game.board.make_move(best_move)
+                    would_repeat = new_game.position_history.count(new_game.board.zobrist_key) >= 2
+                    new_game.board.unmake_move(undo)
+
+                    if would_repeat and eval_score > 50:
+                        depth = searcher.max_depth
+                        second = searcher.second_best.get(depth)
+                        if second and second[1] is not None and second[0] > 0:
+                            final_move = second[1]
+                            print(f"info string avoiding repetition: "
+                                  f"{tools.int_to_uci(best_move)} -> {tools.int_to_uci(final_move)} "
+                                  f"(eval {eval_score} -> {second[0]})", flush=True)
+                            print(f"[dex] repetition_avoid best={tools.int_to_uci(best_move)} "
+                                  f"alt={tools.int_to_uci(final_move)} "
+                                  f"eval={eval_score}->{second[0]}", file=sys.stderr)
+
+                    print(f"bestmove {tools.int_to_uci(final_move)}")
                     sys.stdout.flush()
 
             elif parsed_command[0] == "stop":
