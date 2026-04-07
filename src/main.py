@@ -142,14 +142,22 @@ class UCI:
                         print(f"info string tablebase move {tb_move} eval {tb_eval}")
                         print(f"bestmove {tb_move}")
                         sys.stdout.flush()
+                        move_num = len(new_game.move_history) // 2 + 1
+                        print(f"[dex] source=tablebase move={tb_move} eval={tb_eval} "
+                              f"ply={len(new_game.move_history)}", file=sys.stderr)
                         continue
 
                     # Try opening book (only from startpos)
                     book_move = opening_book.probe(new_game.move_history) if from_startpos else None
                     if book_move:
+                        move_num = len(new_game.move_history) // 2 + 1
                         print(f"info string book move {book_move}")
                         print(f"bestmove {book_move}")
                         sys.stdout.flush()
+                        print(f"[dex] source=book move={book_move} "
+                              f"ply={len(new_game.move_history)} "
+                              f"history={' '.join(new_game.move_history[-4:]) if new_game.move_history else 'start'}",
+                              file=sys.stderr)
                         continue
 
                 # Engine search
