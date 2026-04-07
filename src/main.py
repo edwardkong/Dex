@@ -132,7 +132,15 @@ class UCI:
                     else:
                         remaining = params.get("btime", 60000)
                         increment = params.get("binc", 0)
-                    time_limit = (remaining / 20.0 + increment * 0.75) / 1000.0
+                    # Reserve 500ms for latency/overhead
+                    safe_remaining = max(remaining - 500, 100)
+                    # Use less time when clock is low
+                    if safe_remaining < 10000:  # Under 10 seconds
+                        time_limit = (safe_remaining / 40.0 + increment * 0.5) / 1000.0
+                    elif safe_remaining < 30000:  # Under 30 seconds
+                        time_limit = (safe_remaining / 30.0 + increment * 0.6) / 1000.0
+                    else:
+                        time_limit = (safe_remaining / 20.0 + increment * 0.75) / 1000.0
 
                 if "infinite" not in params:
                     # Try endgame tablebase first (perfect play)

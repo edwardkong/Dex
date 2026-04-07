@@ -68,11 +68,14 @@ class GameState:
                   f"nps={nps} time={elapsed_ms}ms limit={int(time_limit*1000) if time_limit else 'none'}ms",
                   file=sys.stderr)
 
-            # Time management: always complete at least depth 4,
-            # then stop if next depth would likely exceed remaining time
-            if time_limit and d >= 4:
-                if elapsed > time_limit * 0.5:
-                    break
+            # Time management: don't start next depth if we'd likely exceed time.
+            # Each depth takes ~3-5x longer than the previous, so if we've
+            # used more than 25% of our time, the next depth will likely bust.
+            if time_limit:
+                if elapsed > time_limit * 0.8:
+                    break  # Hard cap
+                if d >= 3 and elapsed > time_limit * 0.25:
+                    break  # Soft cap: next depth ~4x longer would exceed limit
             else:
                 # No time limit: use fixed depth
                 if d >= 6:
