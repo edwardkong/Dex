@@ -15,11 +15,9 @@ class UCI:
         new_game.newGameUCI()
         best_move = None
         opening_book = OpeningBook()
-        # Default to NNUE eval (heuristic available via setoption)
-        from eval.nnue.v1 import NNUEEvaluator
-        nnue_evaluator = NNUEEvaluator()
-        use_nnue = True
-        new_game.nnue_evaluator = nnue_evaluator
+        # Default to heuristic eval (NNUE not accurate enough yet)
+        nnue_evaluator = None
+        use_nnue = False
 
         while True:
             try:
@@ -31,7 +29,7 @@ class UCI:
             if parsed_command[0] == "uci":
                 print("id name Dex 0.3")
                 print("id author Edward Kong")
-                print("option name EvalType type combo default nnue var heuristic var nnue")
+                print("option name EvalType type combo default heuristic var heuristic var nnue")
                 print("uciok")
 
             elif parsed_command[0] == "isready":
