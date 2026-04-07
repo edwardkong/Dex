@@ -63,7 +63,8 @@ class GameState:
             print(info_str)
             sys.stdout.flush()
             # Log to stderr for monitoring
-            print(f"[dex] d={d} cp={int(eval_score)} nodes={searcher.nodes} "
+            eval_type = "nnue" if self.nnue_evaluator else "heuristic"
+            print(f"[dex] eval={eval_type} d={d} cp={int(eval_score)} nodes={searcher.nodes} "
                   f"nps={nps} time={elapsed_ms}ms limit={int(time_limit*1000) if time_limit else 'none'}ms",
                   file=sys.stderr)
 
